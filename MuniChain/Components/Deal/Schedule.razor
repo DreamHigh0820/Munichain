@@ -1,0 +1,26 @@
+@using Domain.Services.Database;
+@using Shared.Models.DealComponents;
+@using Domain.Services.Database;
+@using Domain.Services.ThirdParty;
+@inject AuthenticationStateProvider authenticationStateProvider
+
+@if (loading)
+{
+    <Loading loading=loading SimpleLoader=true></Loading>
+}
+else
+{
+    <section aria-labelledby="schedule">
+        <div class="bg-white shadow sm:rounded-lg sm:overflow-hidden">
+            <SfSchedule ShowWeekend=false TValue="AppointmentData" Height="650px">
+                <ScheduleEvents TValue="AppointmentData" OnActionBegin="OnActionBegin"></ScheduleEvents>
+                <ScheduleEventSettings AllowEditFollowingEvents="true" DataSource="@DataSource"></ScheduleEventSettings>
+                <ScheduleViews>
+                    <ScheduleView Option="View.WorkWeek"></ScheduleView>
+                    <ScheduleView Option="View.Month"></ScheduleView>
+                    <ScheduleView Option="View.Agenda"></ScheduleView>
+                </ScheduleViews>
+            </SfSchedule>
+        </div>
+    </section>
+}

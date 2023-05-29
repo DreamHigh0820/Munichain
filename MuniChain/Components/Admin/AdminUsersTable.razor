@@ -1,0 +1,149 @@
+﻿@inject IUserService userService
+@inject IFirmsService firmsService
+
+<div class="mt-6 space-y-4">
+    <div class="flex items-center justify-between space-x-3">
+        <div class="text-lg leading-6 font-bold text-gray-900 mr-auto">Users</div>
+        @* <input type="text" placeholder="Filter by keyword..." class="block w-full max-w-xs rounded-md border-gray-300 sm:text-sm focus:border-emerald-500 focus:ring-0" /> *@
+        <button @onclick="@(() => OnAddUserClick(false))" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">Invite New User</button>
+    </div>
+    <UsersGrid @ref="grid" IsConfirmed=false IsAdmin=true UserEdit="(e => OnAddUserClick(true, e))" TableName="All Registered Users" />
+</div>
+
+@* Add/Edit Firm *@
+<SfDialog Width="500px" IsModal="true" @bind-Visible="AddUserVisibility">
+    <DialogTemplates>
+        <Header>Add/Edit User</Header>
+        <Content>
+            <div class="space-y-4">
+                <div>
+                    <label for="full-name" class="block text-sm font-medium text-gray-700">Full Name</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="col-span-6 sm:col-span-3">
+                            <input @bind="userToEdit.DisplayName" type="text" name="full-name" id="full-name" placeholder="Enter the Full Name of the User" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="col-span-6 sm:col-span-3">
+                            <input @bind="userToEdit.Email" disabled type="email" name="email" id="email" placeholder="Enter the Email Address of the User" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label for="role" class="block text-sm font-medium text-gray-700">Role</label>
+                    <select @bind="userToEdit.JobTitle" id="role" name="role" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                        <option value="" selected></option>
+                        <option value="Municipal Advisor">Municipal Advisor</option>
+                        <option value="Issuer">Issuer</option>
+                        <option value="BondCounsel">Bond Counsel</option>
+                        <option value="Underwriter">Underwriter</option>
+                        <option value="Banker">Banker</option>
+                        <option value="PayingAgent">Paying Agent</option>
+                        <option value="DisseminationAgent">Dissemination Agent</option>
+                        <option value="RatingAgency">Rating Agency</option>
+                        <option value="BackOffice">Back Office</option>
+                        <option value="BondInsurance">Bond Insurance</option>
+                        <option value="EscrowAgent">Escrow Agent</option>
+                        <option value="TrusteeAgent">Trustee Agent</option>
+                        <option value="BankCounsel">Bank Counsel</option>
+                        <option value="UWCounsel">UW Counsel</option>
+                        <option value="CPA">CPA</option>
+                        <option value="DisclosureCounsel">Disclosure Counsel</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="firm" class="block text-sm font-medium text-gray-700">Associated Firm</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="col-span-6 sm:col-span-3">
+                            @* Change to syncfusion autocomplete from firms list *@
+                            <SfDropDownList @bind-Value="userToEdit.AssociatedFirm.Id" AllowFiltering=true TValue="string" TItem="Firm" Placeholder="Firm" DataSource="@Firms">
+                                <DropDownListTemplates TItem="Firm">
+                                    <ItemTemplate>
+                                        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                                            <div>
+                                                <span>@((context as Firm).FirmType)</span>:&nbsp;<span><b>@((context as Firm).Name)</b></span>
+                                            </div>
+                                            <div><span>@((context as Firm).City)</span></div>
+                                        </div>
+                                    </ItemTemplate>
+                                    </DropDownListTemplates>
+                                <DropDownListFieldSettings Text="Name" Value="Id"></DropDownListFieldSettings>
+                                <DropDownListEvents TValue="string" TItem="Firm"  Filtering="OnFilter"></DropDownListEvents>
+                            </SfDropDownList>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="mb-2 text-sm">
+                        <label for="verification-status" class="font-medium text-gray-700 space-x-2 flex">
+                            <span>Verification Status</span>
+                        </label>
+                    </div>
+                    <div>
+                        <SfCheckBox @bind-Checked="userToEdit.Confirmed" Label="Active"></SfCheckBox>
+                    </div>
+                </div>
+            </div>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Add/Edit User" IsPrimary="true" OnClick="@SaveUser" />
+    </DialogButtons>
+    <DialogEvents OnOverlayModalClick="@OverlayClick"></DialogEvents>
+    <DialogAnimationSettings Effect="@DialogEffect.None"></DialogAnimationSettings>
+</SfDialog>
+
+@code {
+    private UsersGrid grid;
+    private bool AddUserVisibility { get; set; } = false;
+    private User userToEdit = new();
+    private User userToDelete = new();
+    private List<Firm> Firms { get; set; }
+
+    private async Task OnFilter(FilteringEventArgs args)
+    {
+        args.PreventDefaultAction = true;
+        await LoadIssuerFirms(args.Text);
+        StateHasChanged();
+    }
+
+    public async Task LoadIssuerFirms(string srchText, List<string> selectedIds = null)
+    {
+        Firms = (await firmsService.GetFirmsForDrpdown(true, null, srchText, selectedIds));
+    }
+
+    private async Task OnAddUserClick(bool edit, User user = null)
+    {
+        Firms = (await firmsService.GetFirmsForDrpdown(true, null, ""));
+        if (edit)
+        {
+            userToEdit = (User)user.Clone();
+            var firmId = (await firmsService.GetFirmsByUserEmail(new string[] { user.Email })).FirstOrDefault()?.FirmId;
+            if (firmId != null)
+            {
+                userToEdit.AssociatedFirm = await firmsService.GetById(firmId);
+            }
+        }
+        else
+        {
+            userToEdit = new();
+        }
+
+        this.AddUserVisibility = true;
+    }
+    private async Task SaveUser()
+    {
+        await userService.UpdateUser(userToEdit);
+        await firmsService.AddMemberToFirm(userToEdit, userToEdit.AssociatedFirm.Id);
+        await grid.LoadUsersForGrid();
+        this.AddUserVisibility = false;
+    }
+    private void OverlayClick(OverlayModalClickEventArgs args)
+    {
+        this.AddUserVisibility = false;
+    }
+}

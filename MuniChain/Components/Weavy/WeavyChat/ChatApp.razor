@@ -1,0 +1,40 @@
+@implements IDisposable
+
+@if (IsShowChat || !IsClosed)
+{
+    @*<button @onclick="ToggleChat">Toggle</button>*@
+    <table style="background-color:cornflowerblue;"><tr><td><button @onclick="ToggleMinimizeMaximize">@(IsMinimized ? "Maximize" : "Minimize")</button></td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<button @onclick="Close">Close</button></td></tr></table>
+    <div @ref="WeavyContainer" style="height:600px;display:@(IsMinimized ? "none":"block")"></div>
+}
+@code{
+    ElementReference WeavyContainer;
+    [Parameter]
+    public bool IsShowChat { get; set; }
+    [CascadingParameter]
+    protected WeavyReference Weavy { get; set; }
+
+    public AppReference ChatAppRef;
+    public bool IsMinimized = true;
+    public bool IsClosed = false;
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            ChatAppRef = await Weavy.App(new { type = "messenger", uid = "chat", container = WeavyContainer });
+        }
+    }
+    public void ToggleMinimizeMaximize()
+    {
+        IsMinimized = !IsMinimized;
+    }
+    public void Close()
+    {
+        IsClosed = true;
+        ChatAppRef?.Remove();
+    }
+    public void ToggleChat()
+    {
+        ChatAppRef?.Toggle();
+    }
+    public void Dispose () {
+        ChatAppRef?.Remove();
+    }
+}

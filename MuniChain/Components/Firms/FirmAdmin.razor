@@ -1,0 +1,206 @@
+@page "/firm/admin"
+
+@inject AuthenticationStateProvider auth
+@inject IFirmsService firmsService
+@inject IDealService dealsService
+@inject IUserService userService
+@inject IToastService toastService
+
+@* Add/Edit Firm *@
+<SfDialog Width="500px" ShowCloseIcon=true IsModal="true" @bind-Visible="AddUserVisibility">
+    <DialogEvents OnOverlayModalClick="@(() => this.AddUserVisibility = false)"></DialogEvents>
+    <DialogTemplates>
+        <Header>Add User as Firm Admin</Header>
+        <Content>
+            <div class="space-y-4">
+                <div>
+                    <label for="full-name" class="block text-sm font-medium text-gray-700">Email</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="col-span-6 sm:col-span-3">
+                            <input @bind="firmAdminEmail" type="text" name="full-name" id="full-name" placeholder="Enter the E-mail of the User" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Add Firm Admin" IsPrimary="true" OnClick="@AddFirmAdmin" />
+    </DialogButtons>
+    <DialogAnimationSettings Effect="@DialogEffect.None"></DialogAnimationSettings>
+</SfDialog>
+
+<SfDialog Width="500px" ShowCloseIcon=true IsModal="true" @bind-Visible="Visibility">
+    <DialogEvents OnOverlayModalClick="@(() => this.Visibility = false)"></DialogEvents>
+    <DialogTemplates>
+        <Header>Add New Members</Header>
+        <Content>
+            <div class="flex items-start space-x-3">
+                <div class="grid grid-cols-12 gap-4 flex-1">
+                    <div class="col-span-12">
+                        <div class="block text-sm font-medium text-gray-700">Email</div>
+                        @for (int i = 0; i < firmMemberEmails.Count; i++)
+                        {
+                            var iCopy = i;
+
+                            <div class="mt-2 flex items-center justify-between">
+                                <input type="email" value="@firmMemberEmails[i]" placeholder="Enter an email address" @onchange="@(e => firmMemberEmails[iCopy] = e.Value.ToString())" class="focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                @* Delete parent <div> onclick *@
+                                <button @onclick="@(() => firmMemberEmails.RemoveAt(iCopy))" type="button" class="inline-flex items-center ml-2 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 space-x-3 whitespace-nowrap">
+                                    <span class="leading-5"><i class="fa-regular fa-trash-can"></i></span>
+                                </button>
+                            </div>
+                        }
+                        @* This button adds another email field above to add another member *@
+                        <div class="flex justify-start mt-2">
+                            <button @onclick="@(() => firmMemberEmails.Add(""))" class="inline-flex justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 space-x-2">Add Another Member</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Invite Members" IsPrimary="true" OnClick="@InviteButtonClick" />
+    </DialogButtons>
+    <DialogAnimationSettings Effect="@DialogEffect.None"></DialogAnimationSettings>
+</SfDialog>
+
+@if (loading)
+{
+        <Loading loading=loading SimpleLoader=true></Loading>
+}
+else
+{
+    <div class="mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <nav class="flex" aria-label="Breadcrumb">
+            <ol role="list" class="flex items-center space-x-4">
+                <li>
+                    <div>
+                        <a href="/" class="text-gray-400 hover:text-gray-500">
+                            <svg class="flex-shrink-0 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                            </svg>
+                            <span class="sr-only">Home</span>
+                        </a>
+                    </div>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="flex-shrink-0 h-5 w-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                            <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
+                        </svg>
+                        <a href="/firms" class="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700">Firms</a>
+                    </div>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="flex-shrink-0 h-5 w-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                            <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
+                        </svg>
+                        <div class="ml-4 text-sm font-medium text-gray-500" aria-current="page">
+                            <span>@firm?.Name</span>
+                        </div>
+                    </div>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="flex-shrink-0 h-5 w-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                            <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
+                        </svg>
+                        <div class="ml-4 text-sm font-medium text-gray-500" aria-current="page">
+                            <span>Admin</span>
+                        </div>
+                    </div>
+                </li>
+            </ol>
+        </nav>
+    </div>
+
+    <main class="py-10">
+        <div class="mx-auto sm:px-6 lg:px-8">
+
+            <!-- Firm header -->
+            <div class="sm:rounded-lg bg-white overflow-hidden shadow mb-8">
+                <div class="bg-white p-6">
+                    <div class="sm:flex sm:items-center sm:justify-between">
+                        <div class="sm:flex sm:space-x-5">
+                            <div class="mt-4 text-center sm:mt-0 sm:pt-1 sm:text-left">
+                                <p class="text-xl font-bold text-gray-900 sm:text-2xl">@firm?.Name</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Stat section for firm's performance -->
+                <div class="border-t border-gray-200 bg-gray-50 grid grid-cols-1 divide-y divide-gray-200 sm:grid-cols-3 sm:divide-y-0 sm:divide-x">
+                    <div class="px-6 py-5 text-sm font-medium text-center">
+                        <span class="text-gray-900">@deals.Item1</span>
+                        <span class="text-gray-600">Deals In Progress/Completed</span>
+                    </div>
+
+                    <div class="px-6 py-5 text-sm font-medium text-center">
+                        <span class="text-gray-900">@firm.Members.Count()</span>
+                        <span class="text-gray-600">Registered Advisors</span>
+                    </div>
+
+                    <div class="px-6 py-5 text-sm font-medium text-center">
+                        <span class="text-gray-900">@string.Format("{0:C2}", deals.Item2)</span>
+                        <span class="text-gray-600">Total Issuance Value</span>
+                    </div>
+                </div>
+            </div>
+
+            <SfTab>
+                <TabAnimationSettings>
+                    <TabAnimationNext Effect="AnimationEffect.None"></TabAnimationNext>
+                    <TabAnimationPrevious Effect="AnimationEffect.None"></TabAnimationPrevious>
+                </TabAnimationSettings>
+                <TabItems>
+                    <TabItem>
+                        <ChildContent>
+                            <TabHeader Text="Members"></TabHeader>
+                        </ChildContent>
+                        <ContentTemplate>
+                            <div class="mt-4 sm:mt-6 space-y-4">
+                                <div class="flex items-center justify-between space-x-3">
+                                    <h2 id="firm-information" class="text-lg font-medium text-gray-900 mr-auto">Firm Members</h2>
+                                    <button @onclick="@OnAddClick" type="button" class="block flex items-center text-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
+                                        <div class="mr-2"><i class="fa-solid fa-plus"></i></div>
+                                        <div>Add New Members</div>
+                                    </button>
+                                    <button @onclick="@(() => AddUserVisibility = true)" type="button" class="block flex items-center text-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
+                                        <div class="mr-2"><i class="fa-solid fa-plus"></i></div>
+                                        <div>Add Firm Admin</div>
+                                    </button>
+                                </div>
+                                <FirmMemberGrid @ref="grid" IsAdmin="true" RemoveFirmMember="(e => RemoveFirmMember(e))" FirmId="@firm.Id"></FirmMemberGrid>
+                            </div>
+                        </ContentTemplate>
+                    </TabItem>
+                    @*
+                        <TabItem>
+                        <ChildContent>
+                        <TabHeader Text="Deals"></TabHeader>
+                        </ChildContent>
+                        <ContentTemplate>
+                        <div class="mt-4 sm:mt-6 space-y-8">
+                        <DealsTable deals="dealsList" sourceComponent="FirmAdminsDeals" firmId="@firm.Id" title="Firms Deals" />
+                        </div>
+                        </ContentTemplate>
+                        </TabItem>
+                    *@
+                    <TabItem>
+                        <ChildContent>
+                            <TabHeader Text="Information"></TabHeader>
+                        </ChildContent>
+                        <ContentTemplate>
+                            <FirmInformation firmInformation="@firm" />
+                        </ContentTemplate>
+                    </TabItem>
+                </TabItems>
+            </SfTab>
+
+        </div>
+    </main>
+}
+

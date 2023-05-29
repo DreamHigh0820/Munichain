@@ -1,0 +1,78 @@
+@if (loading && SimpleLoader && !Delay)
+{
+    <div class="text-center">
+            <div class="h-8 relative">
+                @if (PercentageProgress == null)
+                {
+                    <SfSpinner @bind-Visible="@loading" Type="SpinnerType.Tailwind"></SfSpinner>
+                }
+            </div>
+            <div class="mt-3 sm:mt-5">
+                @{
+                    var message = string.IsNullOrEmpty(Message) ? "Loading" : Message;
+                }
+                <h3 class="text-lg font-medium leading-6 text-gray-900" id="modal-title">@message</h3>
+                @if (PercentageProgress != null)
+                {
+                    <SfProgressBar Theme="Theme.Tailwind" Value="@((double)PercentageProgress)" Minimum="0" Maximum="100" TrackThickness="12" ProgressThickness="12"></SfProgressBar>
+                }
+            </div>
+        </div>
+}
+else if (loading && !Delay) {
+    <div class="show relative z-20">
+        @if (Overlay)
+        {
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
+        }
+        <div class="fixed inset-0 z-20 overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-sm sm:p-6">
+                    <div class="text-center">
+                        <div class="h-8 relative">
+                            @if (PercentageProgress == null)
+                            {
+                                <SfSpinner @bind-Visible="@loading" Type="SpinnerType.Tailwind"></SfSpinner>
+                            }
+                        </div>
+                        <div class="mt-3 sm:mt-5">
+                            @{
+                                var message = string.IsNullOrEmpty(Message) ? "Loading" : Message;
+                            }
+                            <h3 class="text-lg font-medium leading-6 text-gray-900" id="modal-title">@message</h3>
+                            @if (PercentageProgress != null) {
+                                <SfProgressBar Theme="Theme.Tailwind" Value="@((double)PercentageProgress)" Minimum="0" Maximum="100" TrackThickness="12" ProgressThickness="12"></SfProgressBar>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    [Parameter]
+    public bool loading { get; set; }
+    [Parameter]
+    public bool Delay {get; set;} = true;
+    [Parameter]
+    public string Message { get; set; }
+    [Parameter]
+    public bool Overlay { get; set; } = false;
+    [Parameter]
+    public bool SimpleLoader { get; set; } = false;
+    [Parameter]
+    public int? PercentageProgress { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Delay)
+        {
+            await InvokeAsync((() => Task.Delay(500)));
+            Delay = false;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+}

@@ -1,0 +1,431 @@
+@inject IUserService userService
+@inject IEmailService emailService
+@inject IToastService toastService
+@inject IDealParticipantService dealParticipantService
+@inject IFirmsService firmService
+
+<SfDialog Target="#target" Height="auto" Width="500" ShowCloseIcon="true" Header="Set Permissions" @bind-Visible="@ShowPermissionsPopup" AllowPrerender="true" IsModal="true">
+    <DialogEvents OnOverlayModalClick="(() => this.ShowPermissionsPopup = false)"></DialogEvents>
+    <DialogTemplates>
+        <Content>
+            @if (currentSelectedParticipant.UserId == dealInformation.CreatedBy || currentSelectedParticipant.UserId == user.Id)
+            {
+                <b>Please contact Munichain support to edit Permissions of this user.</b>
+            }
+            else
+            {
+                var canGrant = currentUserPermissions.CanGrantPermissions();
+
+                <div class="space-y-4">
+                    <div class="text-gray-500 text-sm">Set permissions for <strong class="capitalize">@currentSelectedParticipant.DisplayName</strong>:</div>
+                    <fieldset class="border-t border-b border-gray-200">
+                        <legend class="sr-only">Permissions</legend>
+                        @if (!currentSelectedParticipantPermissionsModal.IsAdmin)
+                        {
+                            <div class="divide-y divide-gray-200">
+                                <div class="relative flex items-center py-4">
+                                    <div class="min-w-0 flex-1 text-sm">
+                                        <label for="edit-deal-info" class="font-medium text-gray-700">Deal Information</label>
+                                        <!-- <p id="edit-deal-info-description" class="text-gray-500 text-xs mt-1"></p> -->
+                                    </div>
+                                    <div>
+                                        <InputSelect disabled="@currentSelectedParticipantPermissionsModal.IsAdmin" @bind-Value="currentSelectedParticipantPermissionsModal.DealPermission" id="edit-deal-info" name="location" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md">
+                                            <option value="Deal.None" selected>None</option>
+                                            @if (canGrant.Contains(PermissionExtensions.DealRead))
+                                            {
+                                                <option value="Deal.Read">Read-Only</option>
+                                            }
+                                            @if (canGrant.Contains(PermissionExtensions.DealWrite))
+                                            {
+                                                <option value="Deal.Write">Edit</option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                </div>
+
+                                @* Expenditures *@
+                                @* Only deal admin can grant expenditures permissions*@
+                                @if (currentUserPermissions.IsOnlyDealAdmin())
+                                {
+                                    <div class="relative flex items-center py-4">
+                                        <div class="min-w-0 flex-1 text-sm">
+                                            <label for="edit-expenditures" class="font-medium text-gray-700">Expenditures</label>
+                                            <!-- <p id="edit-deal-info-description" class="text-gray-500 text-xs mt-1"></p> -->
+                                        </div>
+                                        <div>
+                                            <InputSelect disabled="@currentSelectedParticipantPermissionsModal.IsAdmin" @bind-Value="currentSelectedParticipantPermissionsModal.ExpenditurePermission" id="edit-expenditures" name="location" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md">
+                                                <option value="Expenditures.None" selected>None</option>
+                                                @if (canGrant.Contains(PermissionExtensions.ExpendituresRead))
+                                                {
+                                                    <option value="Expenditures.Read">Read-Only</option>
+                                                }
+                                                @if (canGrant.Contains(PermissionExtensions.ExpendituresWrite))
+                                                {
+                                                    <option value="Expenditures.Write">Edit</option>
+                                                }
+                                            </InputSelect>
+                                        </div>
+                                    </div>
+                                }
+
+                                @if (currentUserPermissions.IsOnlyDealAdmin())
+                                {
+                                    @* Performance *@
+                                    @* Only deal admins can grant perf permissions*@
+                                    <div class="relative flex items-center py-4">
+                                        <div class="min-w-0 flex-1 text-sm">
+                                            <label for="edit-performance" class="font-medium text-gray-700">Performance</label>
+                                            <!-- <p id="edit-deal-info-description" class="text-gray-500 text-xs mt-1"></p> -->
+                                        </div>
+                                        <div>
+                                            <InputSelect disabled="@currentSelectedParticipantPermissionsModal.IsAdmin" @bind-Value="currentSelectedParticipantPermissionsModal.PerformancePermission" id="edit-performance" name="location" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md">
+                                                <option value="Performance.None" selected>None</option>
+                                                @if (canGrant.Contains(PermissionExtensions.PerformanceRead))
+                                                {
+                                                    <option value="Performance.Read">Read-Only</option>
+                                                }
+                                                @if (canGrant.Contains(PermissionExtensions.PerformanceWrite))
+                                                {
+                                                    <option value="Performance.Write">Edit</option>
+                                                }
+                                            </InputSelect>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        @if (canGrant.Contains(PermissionExtensions.DealAdmin))
+                        {
+                            <div class="relative flex items-start py-4">
+                                <div class="min-w-0 flex-1 text-sm">
+                                    <label for="admin" class="font-medium text-red-600">Deal Admin</label>
+                                    <p id="admin-description" class="text-gray-500 text-xs mt-1">Archive Deal, Lock Deal, Change Deal Status, Add/Remove Participants, Set Roles, Set Permissions</p>
+                                </div>
+                                <div class="ml-3 flex items-center h-5">
+                                    <SfCheckBox @bind-Checked="currentSelectedParticipantPermissionsModal.IsAdmin" />
+                                </div>
+                            </div>
+                        }
+                    </fieldset>
+                </div>
+            }
+
+        </Content>
+        <FooterTemplate>
+            @if (currentSelectedParticipant.UserId != dealInformation.CreatedBy && currentSelectedParticipant.UserId != user.Id)
+            {
+                <button @onclick="(() => OnPermissionsSave(currentSelectedParticipant))" id="sendButton" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600">Save</button>
+            }
+        </FooterTemplate>
+    </DialogTemplates>
+</SfDialog>
+
+@if (loading)
+{
+    <UI.Components.Loading.ParticipantsLoading />
+}
+else
+{
+    if (IsPublicView)
+    {
+        <div class="shadow overflow-hidden sm:rounded-md bg-white">
+            <div class="p-6">
+                <div class="text-lg leading-6 font-medium text-gray-900 mb-3">Active Deal Participants</div>
+                <ul role="list" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-1">
+                    @{
+                        var publicParticipants = participants.Where(x => x.IsPublic == true).OrderByDescending(r => r.DealPermissions.Contains("Deal.Admin")).ThenByDescending(r => r.Role).ThenBy(d => d.DateAddedUTC).ToList();
+                    }
+                    @if (publicParticipants != null && publicParticipants.Any())
+                    {
+                        <PagedList Context="person" ListQuery="@publicParticipants" ItemsPerPage="5">
+                            <ItemDisplay>
+                                <li>
+                                    <div class="group p-2 w-full rounded-md border border-gray-300 shadow-sm space-x-3 text-left">
+                                        <div class="flex flex-col justify-start md:flex-row md:items-center md:justify-between md:space-x-12 space-y-6 md:space-y-0">
+                                            <div class="min-w-0 flex-1 flex items-center space-x-3">
+                                                <div class="block flex-shrink-0">
+                                                    @* Show profile picture for registered user *@
+                                                    <img id="currentPhoto" src='@person.ProfilePicUrl' onerror="this.onerror=null; this.src='images/default.png'" alt="Profile Picture" class="h-10 w-10 rounded" />
+                                                </div>
+                                                <a href=@(!string.IsNullOrEmpty(person.UserId) ? $"/advisor/{person.UserId}" : "#")>
+                                                    <div class="block min-w-0 flex-1">
+                                                        @if (person.DisplayName != null)
+                                                        {
+                                                            <span class="block text-sm font-medium text-gray-900 truncate">@person.DisplayName</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="block text-sm font-medium text-gray-900 truncate">Unknown User</span>
+                                                        }
+                                                        <span class="block text-sm font-medium text-gray-500 truncate">@person.EmailAddress</span>
+                                                    </div>
+                                                </a>
+                                            </div>
+                                            <div class="flex space-x-4 items-center">
+                                                <div class="whitespace-nowrap text-sm text-gray-500">Role: @(person.Role ?? "Unspecified")</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+
+                            </ItemDisplay>
+                        </PagedList>
+                    }
+                    else
+                    {
+                        <span class="block min-w-0 flex-1">
+                            <span class="block text-sm font-medium text-gray-500 truncate">No Participants</span>
+                        </span>
+                    }
+                </ul>
+
+                <div class="text-lg leading-6 font-medium text-gray-900 mb-3 mt-6">Active Entities</div>
+                <ul role="list" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    @if (firmParticipants != null && firmParticipants.Any())
+                    {
+                        <PagedList ListQuery="@firmParticipants" ItemsPerPage="5">
+                            <ItemDisplay>
+                                <li class="col-span-1 divide-y divide-gray-200 rounded-lg border border-gray-300 shadow-sm hover:bg-gray-50">
+                                    <a href=@($"/firm/{context.Id}") class="flex w-full items-start justify-between p-4 h-full">
+                                        <div class="flex-1">
+                                            <div class="flex items-center space-x-3">
+                                                <h3 class="truncate text-sm font-medium text-gray-900">@context.Name</h3>
+                                                <span class="inline-block flex-shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">@context.FirmType.GetDescription()</span>
+                                            </div>
+                                            <p class="mt-2 truncate text-xs text-gray-500">@context.Members.Count() member(s)</p>
+                                        </div>
+                                    </a>
+                                </li>
+                            </ItemDisplay>
+                        </PagedList>
+                    }
+                    else
+                    {
+                        <span class="block min-w-0 flex-1">
+                            <span class="block text-sm font-medium text-gray-500 truncate">No Participants</span>
+                        </span>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+    else
+    {
+        var isAdmin = currentUserPermissions.IsOnlyDealAdmin();
+
+        <div class="shadow overflow-hidden sm:rounded-md bg-white">
+            <div class="p-6">
+                <!-- Invite others -->
+                @* Only show for Deal Admins *@
+                <div class="grid grid-cols-6 gap-6 items-end">
+                    <div class="col-span-6 sm:col-span-6 flex items-center justify-start space-x-4">
+                        <svg class="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 48 48" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M34 40h10v-4a6 6 0 00-10.712-3.714M34 40H14m20 0v-4a9.971 9.971 0 00-.712-3.714M14 40H4v-4a6 6 0 0110.713-3.714M14 40v-4c0-1.313.253-2.566.713-3.714m0 0A10.003 10.003 0 0124 26c4.21 0 7.813 2.602 9.288 6.286M30 14a6 6 0 11-12 0 6 6 0 0112 0zm12 6a4 4 0 11-8 0 4 4 0 018 0zm-28 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <div>
+                            <h2 class="text-lg font-medium text-gray-900">Deal Participants</h2>
+                            <p class="text-sm text-gray-500">
+                                Invite deal participants and assign public-facing or internal roles. Set permissions to upload files or manage the deal.
+                            </p>
+                        </div>
+                    </div>
+                    <form class="col-span-6 sm:col-span-6 sm:flex sm:items-end space-y-3 sm:space-y-0 sm:space-x-3 group p-3 w-full rounded-md bg-gray-50 shadow-sm">
+                        <div class="flex-1">
+                            <label for="emails" class="block text-sm font-medium text-gray-700">Add New Participant</label>
+                            <div class="mt-1">
+                                <input @bind-value="emailAddress" type="text" name="emails" id="emails" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" placeholder="Enter an email address">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="role-add" class="block text-sm font-medium text-gray-700">Role</label>
+                            <div class="mt-1">
+                                <InputSelect @bind-Value="role" id="role-add" name="role-add" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md shadow-sm" placeholder="Select role">
+                                    <option value="" selected></option>
+                                    <option value="Municipal Advisor">Municipal Advisor</option>
+                                    <option value="Issuer">Issuer</option>
+                                    <option value="Bond Counsel">Bond Counsel</option>
+                                    <option value="Underwriter">Underwriter</option>
+                                    <option value="Banker">Banker</option>
+                                    <option value="PayingAgent">Paying Agent</option>
+                                    <option value="Dissemination Agent">Dissemination Agent</option>
+                                    <option value="Rating Agency">Rating Agency</option>
+                                    <option value="Back Office">Back Office</option>
+                                    <option value="Bond Insurance">Bond Insurance</option>
+                                    <option value="Escrow Agent">Escrow Agent</option>
+                                    <option value="Trustee Agent">Trustee Agent</option>
+                                    <option value="Bank Counsel">Bank Counsel</option>
+                                    <option value="UW Counsel">UW Counsel</option>
+                                    <option value="CPA">CPA</option>
+                                    <option value="Disclosure Counsel">Disclosure Counsel</option>
+                                    <option value="Other">Other</option>
+                                </InputSelect>
+                            </div>
+                        </div>
+                        <div class="sm:flex-shrink-0">
+                            <button type="button" @onclick="() => AddParticipant(emailAddress)" class="block w-full text-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
+                                Invite Participant
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <!-- Each Participant -->
+                <div class="mt-10">
+                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Participants</h3>
+                    <ul role="list" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-1">
+                        @if (participants != null && participants.Any())
+                        {
+                            <PagedList ListQuery="@participants" ItemsPerPage="5">
+                                <ItemDisplay>
+                                    <li>
+                                        <div class="group p-3 w-full rounded-md border border-gray-300 shadow-sm space-y-3 text-left">
+                                            <div class="flex flex-col justify-start md:flex-row md:items-center md:justify-between md:space-x-6 space-y-3 md:space-y-0">
+                                                <div class="min-w-0 flex-1 flex items-center space-x-3">
+                                                    <div class="block flex-shrink-0">
+                                                        <img id="currentPhoto" src='@context.ProfilePicUrl' onerror="this.src='images/default.png'" alt="Profile Picture" class="h-10 w-10 rounded" />
+                                                    </div>
+                                                    <a href=@(!string.IsNullOrEmpty(context.UserId) ? $"/advisor/{context.UserId}" : "")>
+                                                        <div class="block min-w-0 flex-1">
+                                                            @if (context.DisplayName != null)
+                                                            {
+                                                                <span class="block text-sm font-medium text-gray-900 truncate">@context.DisplayName</span>
+                                                            }
+                                                            <span class="block text-sm font-medium text-gray-500 truncate">@context.EmailAddress</span>
+                                                        </div>
+                                                    </a>
+                                                </div>
+                                                @* Only editable for Deal Admins *@
+                                                <div class="flex space-x-3 items-center">
+                                                    <div class="whitespace-nowrap text-sm text-gray-500">Role:</div>
+                                                    @* Edit role for person in deal *@
+
+                                                    @if (isAdmin || context.CreatedBy == user.Id)
+                                                    {
+                                                        <InputSelect @bind-Value="context.Role" id="location" name="location" class="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md" placeholder="Select role">
+                                                            <option value="Municipal Advisor">Municipal Advisor</option>
+                                                            <option value="Issuer">Issuer</option>
+                                                            <option value="Bond Counsel">Bond Counsel</option>
+                                                            <option value="Underwriter">Underwriter</option>
+                                                            <option value="Banker">Banker</option>
+                                                            <option value="PayingAgent">Paying Agent</option>
+                                                            <option value="Dissemination Agent">Dissemination Agent</option>
+                                                            <option value="Rating Agency">Rating Agency</option>
+                                                            <option value="Back Office">Back Office</option>
+                                                            <option value="Bond Insurance">Bond Insurance</option>
+                                                            <option value="Escrow Agent">Escrow Agent</option>
+                                                            <option value="Trustee Agent">Trustee Agent</option>
+                                                            <option value="Bank Counsel">Bank Counsel</option>
+                                                            <option value="UW Counsel">UW Counsel</option>
+                                                            <option value="CPA">CPA</option>
+                                                            <option value="Disclosure Counsel">Disclosure Counsel</option>
+                                                            <option value="Other">Other</option>
+                                                        </InputSelect>
+
+                                                        @if (isAdmin)
+                                                        {
+
+                                                            <div class="relative flex items-start">
+                                                                <div class="flex items-center h-5">
+                                                                    <input @bind="context.IsPublic" id="public" aria-describedby="public" name="public" type="checkbox" class="focus:ring-emerald-500 h-4 w-4 text-emerald-600 border-gray-300 rounded" />
+                                                                </div>
+                                                                <div class="ml-2 text-sm">
+                                                                    <label for="public" class="font-medium text-gray-700 whitespace-nowrap">Public</label>
+                                                                </div>
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            @if (context.IsPublic == true) {
+                                                                <div class="relative flex items-start">
+                                                                    <span for="public" class="font-medium text-gray-700 whitespace-nowrap">Public</span>
+                                                                </div>
+                                                            }
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>@context.Role</span>
+
+                                                        @if (context.IsPublic == true)
+                                                        {
+                                                            <div class="relative flex items-start">
+                                                                <span for="public" class="font-medium text-gray-700 whitespace-nowrap">Public</span>
+                                                            </div>
+                                                        }
+                                                    }
+                                                </div>
+                                                <div class="space-x-2 flex items-start">
+                                                    @{
+                                                        var isDealCreator = context.UserId == dealInformation.CreatedBy;
+                                                        // You need to have permissions to be able to open the modal.
+                                                        var hasAnyPermissions = currentUserPermissions.Where(x => !x.Contains("None")).Count() > 0;
+                                                        var deleteParticipantStyle = isDealCreator ?
+                                                        "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white-700 bg-white-100 hover:bg-white-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-500 space-x-3 whitespace-nowrap"
+                                                        : "inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 space-x-3 whitespace-nowrap";
+                                                    }
+                                                    @* if you're not the participant, and you are either the created or a deal admin, you can edit permissions' *@
+                                                    @if (context.UserId != user.Id && (context.CreatedBy == user.Id || isAdmin) && hasAnyPermissions)
+                                                    {
+                                                        <button @onclick="@(() => OnPermissionsOpen(context))" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 space-x-3 whitespace-nowrap">
+                                                            <i class="fa-solid fa-user-lock"></i>
+                                                            <span>Set Permissions</span>
+                                                        </button>
+                                                    }
+                                                    @if (context.UserId != user.Id && (context.CreatedBy == user.Id || isAdmin))
+                                                    {
+                                                        <button disabled="@isDealCreator" @onclick="(() => RemoveParticipant(context))" type="button" class="@deleteParticipantStyle">
+                                                            <span class="leading-5"><i class="fa-regular fa-trash-can"></i></span>
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </div>
+                                            <div class="border-t border-gray-200 pt-3 text-gray-500 text-xs">@context.DealPermissions.GetPermissionDescription(currentUserPermissions)</div>
+                                        </div>
+                                    </li>
+                                </ItemDisplay>
+                            </PagedList>
+                        }
+                        else
+                        {
+                            <span class="block min-w-0 flex-1">
+                                <span class="block text-sm font-medium text-gray-500 truncate">No Participants</span>
+                            </span>
+                        }
+                    </ul>
+                </div>
+                <div class="mt-10">
+                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Entities</h3>
+                    @if (firmParticipants != null && firmParticipants.Any())
+                    {
+                        <ul role="list" class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            <PagedList ListQuery="@firmParticipants">
+                                <ItemDisplay>
+                                    <li class="col-span-1 divide-y divide-gray-200 rounded-lg border border-gray-300 shadow-sm hover:bg-gray-50">
+                                        <a href=@($"/firm/{context.Id}") class="flex w-full items-start justify-between p-4 h-full">
+                                            <div class="flex-1">
+                                                <div class="flex items-center space-x-3">
+                                                    <h3 class="truncate text-sm font-medium text-gray-900">@context.Name</h3>
+                                                    <span class="inline-block flex-shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">@context.FirmType.GetDescription()</span>
+                                                </div>
+                                                <p class="mt-2 truncate text-xs text-gray-500">@context.Members.Count() member(s)</p>
+                                            </div>
+                                        </a>
+                                    </li>
+                                </ItemDisplay>
+                            </PagedList>
+                        </ul>
+                    }
+                    else
+                    {
+                        <span class="block min-w-0 flex-1 mt-2">
+                            <span class="block text-sm font-medium text-gray-500 truncate">Assign a participant to your firm to see associated entities.</span>
+                        </span>
+                    }
+                </div>
+            </div>
+            <div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
+                <button @onclick="SaveParticipants" type="button" class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">Save</button>
+            </div>
+        </div>
+    }
+}

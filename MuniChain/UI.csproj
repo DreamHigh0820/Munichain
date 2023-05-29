@@ -1,0 +1,85 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+	
+	<PropertyGroup>
+		<TargetFramework>net7.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<WebProject_DirectoryAccessLevelKey>0</WebProject_DirectoryAccessLevelKey>
+		<Nullable>disable</Nullable>
+	</PropertyGroup>
+	<PropertyGroup>
+		<UseRazorSourceGenerator>false</UseRazorSourceGenerator>
+		<UserSecretsId>c30a4ac5-10f2-46f4-a805-e7c5a83e38d5</UserSecretsId>
+		<ApplicationInsightsResourceId>/subscriptions/69f503bd-f5ad-4205-868e-a7cebd0bbb06/resourceGroups/MuniChainDev/providers/microsoft.insights/components/munichaindev</ApplicationInsightsResourceId>
+	</PropertyGroup>
+	<PropertyGroup Condition=" '$(RunConfiguration)' == 'MuniChain-LOCAL' " />
+	<PropertyGroup Condition=" '$(RunConfiguration)' == 'MuniChain-DEMO' " />
+	<PropertyGroup Condition=" '$(RunConfiguration)' == 'MuniChain-PROD' " />
+	<PropertyGroup>
+		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+	</PropertyGroup>
+	<ItemGroup>
+		<Compile Remove="publish\**" />
+		<Content Remove="publish\**" />
+		<EmbeddedResource Remove="publish\**" />
+		<None Remove="publish\**" />
+		<Content Remove="package-lock.json" />
+		<Content Remove="package.json" />
+		<None Remove=".DS_Store" />
+		<None Remove="Components\.DS_Store" />
+		<None Remove="Components\Deal\Information.razor~RF31134f08.TMP" />
+		<None Remove="postcss.config.js" />
+		<None Remove="tailwind.config.js" />
+		<PackageReference Include="Azure.Extensions.AspNetCore.Configuration.Secrets" Version="1.2.2" />
+		<PackageReference Include="Azure.Identity" Version="1.6.0" />
+		<PackageReference Include="Blazored.Toast" Version="3.2.2" />
+		<PackageReference Include="BoldSign.Api" Version="4.8.4" />
+		<PackageReference Include="ClosedXML" Version="0.97.0" />
+		<PackageReference Include="EFCore.DbContextFactory" Version="2.0.0" />
+		<PackageReference Include="Hangfire.AspNetCore" Version="1.7.32" />
+		<PackageReference Include="Hangfire.Core" Version="1.8.0-rc2" />
+		<PackageReference Include="Hangfire.MemoryStorage" Version="1.7.0" />
+		<PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.21.0" />
+		<PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="7.0.2" />
+		<PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="6.0.4" />
+		<PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="2.2.0" />
+		<PackageReference Include="Microsoft.Data.SqlClient" Version="4.1.0" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="6.0.5" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.5">
+		  <PrivateAssets>all</PrivateAssets>
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="6.0.1" />
+		<PackageReference Include="Microsoft.Identity.Client" Version="4.43.2" />
+		<PackageReference Include="Microsoft.Owin" Version="4.2.2" />
+		<PackageReference Include="Postmark" Version="4.7.2" />
+</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.4" NoWarn="NU1605" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="6.0.4" NoWarn="NU1605" />
+		<PackageReference Include="Microsoft.Azure.SignalR" Version="1.17.0" />
+		<PackageReference Include="Microsoft.Extensions.Azure" Version="1.1.1" />
+		<PackageReference Include="Microsoft.Identity.Web" Version="1.24.1" />
+		<PackageReference Include="Microsoft.Identity.Web.UI" Version="1.24.1" />
+		<PackageReference Include="Syncfusion.Blazor.Buttons" Version="20.4.0.43" />
+		<PackageReference Include="Syncfusion.Blazor.Core" Version="20.4.0.43" />
+		<PackageReference Include="Syncfusion.Blazor.Grid" Version="20.4.0.43" />
+		<PackageReference Include="Syncfusion.Blazor.Inputs" Version="20.4.0.43" />
+		<PackageReference Include="Syncfusion.Blazor.PdfViewerServer.Windows" Version="20.4.0.43" />
+		<PackageReference Include="Syncfusion.Blazor.Popups" Version="20.4.0.43" />
+		<PackageReference Include="Syncfusion.Blazor.ProgressBar" Version="20.4.0.43" />
+		<PackageReference Include="Syncfusion.Blazor.RichTextEditor" Version="20.4.0.43" />
+		<PackageReference Include="Syncfusion.Blazor.Schedule" Version="20.4.0.43" />
+		<PackageReference Include="Syncfusion.Blazor.Themes" Version="20.4.0.43" />
+		<PackageReference Include="Syncfusion.Blazor.WordProcessor" Version="20.4.0.43" />
+		<PackageReference Include="Syncfusion.DocIORenderer.Net.Core" Version="20.4.0.43" />
+		<PackageReference Include="Syncfusion.Presentation.Net.Core" Version="20.4.0.43" />
+		<PackageReference Include="Syncfusion.PresentationRenderer.Net.Core" Version="20.4.0.43" />
+		<PackageReference Include="Syncfusion.XlsIO.Net.Core" Version="20.4.0.43" />
+</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\MuniChain.Domain\Domain.csproj" />
+	  <ProjectReference Include="..\MuniChain.Shared\Shared.csproj" />
+	</ItemGroup>
+</Project>

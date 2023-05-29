@@ -1,0 +1,39 @@
+@page "/chat"
+@inject TokenService auth
+@inject IUserService userService
+
+@if (loading)
+{
+    
+}
+else
+{
+    <Weavy url="https://munichain-dev.weavy.io" token="@token" timezone="@user.TimeZone">
+        <div style="height: 50%;
+                            width:30%;
+                            position: fixed;
+                            bottom: 120px;">
+            <ChatApp IsShowChat=@IsShowChat />
+        </div>
+    </Weavy>
+}
+
+
+@code {
+    [Parameter]
+    public bool IsShowChat { get; set; }
+    private bool loading = true;
+    private string token;
+    private User user;
+
+    protected override async Task OnInitializedAsync()
+    {
+        loading = true;
+
+        var state = await authenticationStateProvider.GetAuthenticationStateAsync();
+        user = await userService.GetUserById(state.ToUser().Id);
+
+        token = await auth.GetToken(user);
+        loading = false;
+    }
+}

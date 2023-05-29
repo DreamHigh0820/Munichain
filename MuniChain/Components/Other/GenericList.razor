@@ -1,0 +1,91 @@
+﻿@typeparam T
+@inherits GenericListBase<T>
+<div>
+    <div class="flex flex-col sm:flex-row sm:justify-end sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 mb-3">
+        <div class="text-lg leading-6 font-medium text-gray-800 mr-auto">@TableName</div>
+        <div class="flex items-center space-x-2 grow">
+            <input id="GridSearchBox" type="search" value="@PaginationDTO.SearchText" @oninput="OnChangeSearchBox" @onkeydown="@OnKeyDown" class="focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm text-sm border-gray-300 rounded-md" placeholder="Search">
+            <button id="GridSearchBtn" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-white bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 space-x-2 whitespace-nowrap" type="submit" @onclick=@SearchGenericInternal>
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <span>Search</span>
+            </button>
+        </div>
+        <div class="flex items-center space-x-1">
+            <div class="text-sm text-gray-700">Show</div>
+            <select class="block max-w-lg rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:max-w-xs text-sm" @onchange="@RecordsPerPageChangeInternal" id="ddlPageCount">
+                <option value="10" selected=@("10" == @RecordsPerPage.ToString())>10</option>
+                <option value="25" selected=@("25" == @RecordsPerPage.ToString())>25</option>
+                <option value="50" selected=@("50" == @RecordsPerPage.ToString())>50</option>
+                <option value="100" selected=@("100" == @RecordsPerPage.ToString())>100</option>
+            </select>
+            <div class="text-sm text-gray-700">Entries</div>
+        </div>
+        @if (IsShowExport)
+        {
+            <button type="submit" class="inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-white bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 space-x-2 whitespace-nowrap" @onclick=@ExcelExportGenericInternal>
+                <i class="fa-solid fa-file-export"></i>
+                <span>Export</span>
+            </button>
+        }
+    </div>
+    @if (List == null)
+    {
+        @if (NullTemplate != null)
+        {
+            @NullTemplate
+        }
+        else
+        {
+            <Loading loading=true SimpleLoader=true></Loading>
+        }
+    }
+    else if (List.Count == 0)
+    {
+        @if (EmptyTemplate != null)
+        {
+            @EmptyTemplate
+        }
+        else
+        {
+            // Default Content
+            <NoData />
+        }
+    }
+    else
+    {
+        @if (ElementTemplate != null)
+        {
+            @foreach (var element in List)
+            {
+                @ElementTemplate(element)
+            }
+        }
+        else
+        {
+            @WholeListTemplate
+        }
+        <div class="flex items-center justify-between mt-3">
+            <div class="hidden sm:block">
+                <p class="text-sm text-gray-700">
+                  Showing
+                  <span class="font-medium">@FirstRecordNoShowing</span>
+                  to
+                    @if (LastRecordNoShowing > TotalRecords)
+                    {
+                        <span class="font-medium">@TotalRecordsShowing</span>
+                    }
+                    else
+                    {
+                        <span class="font-medium">@LastRecordNoShowing</span>
+                    }
+                    of
+                  <span class="font-medium">@TotalRecordsShowing</span>
+                  entries
+                </p>
+            </div>
+            <div>
+                <Pagination CurrentPage="CurrentPage" TotalPages="TotalPages" PageChange="OnPageChange" />
+            </div>
+        </div>
+    }
+</div>

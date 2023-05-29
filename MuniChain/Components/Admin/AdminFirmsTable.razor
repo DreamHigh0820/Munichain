@@ -1,0 +1,96 @@
+﻿@inject IFirmsService firmsService
+
+<div class="mt-6 space-y-4">
+    <div class="flex items-center justify-between space-x-3">
+        <div class="text-lg leading-6 font-bold text-gray-900 mr-auto">Firms</div>
+        <button @onclick="@(() => OnAddFirmClick(false))" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">Add New Firm</button>
+    </div>
+    <UI.Components.Firms.FirmsGrid @ref="grid" IncludeMembers=true IsConfirmed=false IsAdmin=true FirmEdit="(e => OnAddFirmClick(true, e))" FirmDelete="(e => OnDeleteFirmClick(e))" TableName="All Registered Firms" />
+</div>
+
+@* Add/Edit Firm *@
+<SfDialog Width="500px" IsModal="true" @bind-Visible="AddFirmVisibility">
+    <DialogTemplates>
+        <Header>Add/Edit Firm</Header>
+        <Content>
+            <div class="space-y-4">
+                <div>
+                    @if (string.IsNullOrEmpty(firmToEdit.Name))
+                    {
+                        <label for="firm-name" class="block text-sm font-medium text-gray-700">
+                            New Firm
+                        </label>
+                    }
+                    else {
+                        <label for="firm-name" class="block text-sm font-medium text-gray-700">
+                            @firmToEdit.Name
+                        </label>
+                    }
+                    
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="col-span-6 sm:col-span-3">
+                            <input @bind="firmToEdit.Name" type="text" name="firm-name" id="firm-name" placeholder="Enter the Firm Name" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label for="firm-type" class="block text-sm font-medium text-gray-700">Firm Type</label>
+                    <select @bind="firmToEdit.FirmType" id="firm-type" name="firm-type" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                        <option value="" selected></option>
+                        <option value="Advisor">Municipal Advisor</option>
+                        <option value="Issuer">Issuer</option>
+                        <option value="BondCounsel">Bond Counsel</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="firm-admin" class="block text-sm font-medium text-gray-700">Firm Admin</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="col-span-6 sm:col-span-3">
+                            @* Change to syncfusion autocomplete from users list *@
+                            <input @bind="firmAdminEmails" type="text" name="firm-admin" id="firm-admin" placeholder="Enter Email of the Firm Admin" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="mb-2 text-sm">
+                        <label for="firm-status" class="font-medium text-gray-700 space-x-2 flex">
+                            <span>Firm Status</span>
+                            <SfTooltip Position="Syncfusion.Blazor.Popups.Position.TopCenter" Content="Set firms to <strong class='underline'>Active</strong> if clients are in beta or paid contract. All Members associated to an Active firm will have Create New Deal permissions and access to published deals, advisors, and firms tabs. Set firms to <strong class='underline'>Suspended</strong> if clients are no longer under contract/if contract has expired without renewal. Create New Deal permissions for all associated members will be disabled. Associated Members will still have access to previously created deals.">
+                                <span class="text-gray-500">
+                                    <i class="fa-solid fa-circle-info"></i>
+                                </span>
+                            </SfTooltip>
+                        </label>
+                    </div>
+                    <div>
+                        <SfCheckBox @bind-Checked="firmToEdit.Confirmed" Label="Active"></SfCheckBox>
+                    </div>
+                </div>
+            </div>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Add/Edit Firm" IsPrimary="true" OnClick="@SaveFirm" />
+    </DialogButtons>
+    <DialogEvents OnOverlayModalClick="@OverlayClick"></DialogEvents>
+    <DialogAnimationSettings Effect="@DialogEffect.None"></DialogAnimationSettings>
+</SfDialog>
+
+@* Delete Firm *@
+@* Open Question: what happens to assiciated users/members and deals/docs if a firm is deleted? *@
+<SfDialog Target="#target" Height="auto" Width="500" ShowCloseIcon="true" Header="Delete Firm" @bind-Visible="@ShowDeletePopup" AllowPrerender="true" IsModal="true">
+    <DialogEvents OnOverlayModalClick="@(() => this.ShowDeletePopup = false)"></DialogEvents>
+    <DialogTemplates>
+        <Content>
+            <div class="flex items-center justify-start space-x-3">
+                <div class="text-red-500 text-lg">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                </div>
+                <div class="text-gray-500 text-sm">Are you sure you want to delete this firm? This action cannot be undone.</div>
+            </div>
+        </Content>
+        <FooterTemplate>
+            <button id="sendButton" @onclick="@DeleteFirm" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">Delete</button>
+        </FooterTemplate>
+    </DialogTemplates>
+</SfDialog>

@@ -1,0 +1,47 @@
+@inject AuthenticationStateProvider authenticationStateProvider
+@inject IDealService dealService
+@inject IUserService userService
+
+<div class="bg-white shadow sm:rounded-lg sm:overflow-hidden">
+    <div class="divide-y divide-gray-200">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">References</h3>
+        </div>
+        <div class="p-4 sm:p-6">
+            <ul role="list" class="space-y-8">
+                @if (references != null && references.Any())
+                {
+                    @foreach (var reference in references)
+                    {
+                        <li>
+                            <div class="flex space-x-3">
+                                <div class="flex-shrink-0">
+                                    <img class="h-10 w-10 rounded-full" src="@user.BlobUrl/default.png" alt="Display Name">
+                                </div>
+                                <div>
+                                    <div class="text-sm">
+                                        <div class="font-medium text-gray-900">@reference.GivenBy</div>
+                                    </div>
+                                    <div class="mt-1 text-sm text-gray-700">
+                                        <p>@reference.Message</p>
+                                    </div>
+                                    <div class="mt-2 text-sm space-x-2">
+                                        <span class="text-gray-500 font-medium">@reference.UserRole</span>
+                                        <span class="text-gray-500 font-medium">&middot;</span>
+                                        <span class="text-gray-500 font-medium">@reference.DateGivenUTC.Value.Date.ToShortDateString()</span>
+                                        <span class="text-gray-500 font-medium">&middot;</span>
+                                        @* Link to the deal associated to the user's recommendation *@
+                                        <a href="/deal/@(reference.DealId)" class="text-gray-900 font-medium">@reference.DealName</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    }
+                }
+                else {
+                    <div class="text-sm text-gray-500">No references have been added. Issuer participants will be prompted to add a reference after the sale date.</div>
+                }
+            </ul>
+        </div>
+    </div>
+</div>

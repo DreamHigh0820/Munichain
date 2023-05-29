@@ -1,0 +1,54 @@
+﻿<SfDialog Width="800px" ShowCloseIcon="true" IsModal="true" @bind-Visible="@IsShowConcurrencyItem">
+    <DialogTemplates>
+        <Header>Merge Conflicts</Header>
+        <Content>
+            <p class="text-gray-700 mb-3">Another user has edited this deal since you last saved. Please review the following changes and select which versions to keep.</p>
+            @{
+                var maturitiesExist = LstConcurrencyItem.Any(x => !string.IsNullOrEmpty(x.MaturityDate));
+                var Hide = (new string[] { "BaseModelName" });
+            }
+            <SfGrid DataSource="@LstConcurrencyItem" AllowGrouping="true" Height="400">
+                <GridGroupSettings ShowDropArea="false" Columns=@Hide></GridGroupSettings>
+                <GridColumns>
+                    <GridColumn Field=@nameof(ConcurrencyItem.BaseModelName) HeaderText="" TextAlign="TextAlign.Right" Width="10%"></GridColumn>
+                    <GridColumn Field=@nameof(ConcurrencyItem.Prop) HeaderText="Property" Width="20%"></GridColumn>
+                    @{
+                        string format = "C2";
+                    }
+                    <GridColumn Field=@nameof(ConcurrencyItem.Original) HeaderText="Action" TextAlign="TextAlign.Right" Width="10%"></GridColumn>
+                    <GridColumn Field=@nameof(ConcurrencyItem.Updated) HeaderText="New" TextAlign="TextAlign.Right" Width="25%">
+                        <Template>
+                            @{
+                                var ctx = context as ConcurrencyItem;
+                            }
+                            @if (ctx?.Updated != null && ctx.IsUpdatedDateTime)
+                            {
+                                @DateTime.Parse(ctx?.Updated?.ToString()).ToShortDateString()
+                            }
+                            else if (ctx?.Updated != null && ctx.IsUpdatedDecimal)
+                            {
+                                @decimal.Parse(ctx?.Updated?.ToString()).ToString("N",new CultureInfo("en-US"))
+                            }
+                            else
+                            {
+                                @ctx?.Updated?.ToString()
+                            }
+                        </Template>
+                    </GridColumn>
+                    <GridColumn Field=@nameof(ConcurrencyItem.FromDB) HeaderText="Old" TextAlign="TextAlign.Right" Width="25%">
+                        <Template>
+                            @{
+                                var ctx = context as ConcurrencyItem;
+                            }
+                            <SfCheckBox @bind-Checked="@ctx.IsFromDBChecked" @onchange="@(e=>FromDBChange(e,ctx))"></SfCheckBox>@ctx.FromDB
+                        </Template>
+                    </GridColumn>
+                </GridColumns>
+            </SfGrid>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Merge & Submit" IsPrimary="true" OnClick="@MergeSubmitInternal" />
+        <DialogButton Content="Close" IsPrimary="true" OnClick="@(() => IsShowConcurrencyItem = false)" />
+    </DialogButtons>
+</SfDialog>

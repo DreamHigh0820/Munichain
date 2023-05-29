@@ -1,0 +1,73 @@
+﻿@using System.Net.Http
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.JSInterop
+@using System.Net
+@using System.Net.Http.Headers
+@using Syncfusion.Blazor.Calendars
+@using Syncfusion.Blazor.Spinner
+@using System.Globalization
+@using Microsoft.Extensions.Configuration
+@using Syncfusion.Blazor
+@using Syncfusion.Blazor.Core
+@using Syncfusion.Blazor.Inputs
+@using Syncfusion.Blazor.PdfViewerServer
+@using Syncfusion.Blazor.DropDowns
+@using Syncfusion.Blazor.Notifications
+@using Syncfusion.Blazor.RichTextEditor
+@using Syncfusion.Blazor.Schedule
+@using Syncfusion.Blazor.DocumentEditor
+@using System.Security.Claims
+@using Newtonsoft.Json
+@using RestSharp
+@using RestSharp.Extensions
+@using Syncfusion.Blazor.Buttons
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Data
+@using Syncfusion.Blazor.PdfViewer
+@using Syncfusion.Blazor.Popups
+@using Azure.Storage.Blobs.Models
+@using Syncfusion.Blazor.Navigations
+@using Blazored.Toast
+@using Blazored.Toast.Services
+@using Blazored.Toast.Configuration
+@using Microsoft.AspNetCore.SignalR.Client
+@using System.Collections.ObjectModel
+@using Syncfusion.Blazor.Lists
+@using Syncfusion.Blazor.ProgressBar
+@using System.Text.RegularExpressions
+@using Microsoft.ApplicationInsights
+@using Hangfire;
+
+@using Shared.Validators;
+@using Shared.Models.DealComponents
+@using Shared.Models.Users
+@using Shared.Models
+@using Shared.Helpers
+@using UI.Pages
+@using UI.Components.Deal
+@using UI.Components.Documents
+@using UI.Components.Users
+@using UI.Components.Other
+@using UI.Components.NavigationBar
+@using Shared.Models.Enums;
+@using Shared.Models.AppComponents;
+@using Shared.Models.Chat;
+@using Domain.Services.Database;
+@using Domain.Services.ThirdParty;
+@using Domain.UIProvider;
+
+
+@inject AuthenticationStateProvider authenticationStateProvider
+@inject IToastService toastService
+@inject IEmailService emailService
+@inject INotificationService notificationService
+@inject NavigationManager navigationManager
+@inject IJSRuntime _jsRuntime
+@inject IBackgroundJobClient BackgroundJobs
+@inject IRecurringJobManager RecurringJobs
+@inject TelemetryClient telemetry

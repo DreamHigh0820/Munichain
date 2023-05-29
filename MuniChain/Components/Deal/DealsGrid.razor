@@ -1,0 +1,85 @@
+﻿@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@inject ProtectedSessionStorage ProtectedSessionStore
+@if (loading)
+{
+    <span>Loading...</span>
+}
+else
+{
+    <div class="bg-white overflow-hidden shadow mb-8 sm:rounded-lg">
+        <div class="p-4 sm:p-6">
+            <div class="flex flex-col">
+                <GenericList TableName="@TableName" List="DealList" PaginationDTO="SearchParams" RecordsPerPage="SearchParams.RecordsPerPage" CurrentPage="SearchParams.CurrentPage" CurrentPageDouble="CurrentPageDouble" TotalPages="TotalPages" TotalRecords="TotalRecords" PageChange="OnPageChange" RecordsPerPageChange="OnRecordsPerPageChange" SearchGeneric="OnSearchGeneric" IsShowExport=true ExcelExportGeneric="OnGridExcelExport">
+                    <WholeListTemplate>
+                        <div class="overflow-x-auto border border-gray-300 rounded-md">
+                            <div class="inline-block min-w-full align-middle">
+                                <div class="overflow-hidden">
+                                    @{
+                                        var referral = IsPublishedOnly ? "deals" : "";
+                                    }
+                                    <table id="@Guid.NewGuid().ToString()" data-order="[]" class="min-w-full divide-y divide-gray-300" cellspacing="0">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th scope="col" @onclick="@(() => Sort("SaleDateUTC"))" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Sale Date <i class="@(SortIndicator("SaleDateUTC"))"></i></th>
+                                                <th scope="col" @onclick="@(() => Sort("Size"))" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Size<i class="@(SortIndicator("Size"))"></i></th>
+                                                <th scope="col" @onclick="@(() => Sort("Issuer"))" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Issuer <i class="@(SortIndicator("Issuer"))"></i></th>
+                                                <th scope="col" @onclick="@(() => Sort("State"))" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">State <i class="@(SortIndicator("State"))"></i></th>
+                                                <th scope="col" @onclick="@(() => Sort("OfferingType"))" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Offering Type<i class="@(SortIndicator("OfferingType"))"></i></th>
+                                                @if (ShowStatus)
+                                                {
+                                                    <th scope="col" @onclick="@(() => Sort("Status"))" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Status <i class="@(SortIndicator("Status"))"></i></th>
+                                                }
+                                                else
+                                                {
+                                                    <th scope="col" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Lead Manager</th>
+                                                }
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-200 bg-white">
+                                            @foreach (var context in DealList)
+                                            {
+                                                <tr class="relative hover:bg-gray-50">
+                                                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@(context.SaleDateUTC == null ? "TBA" : context.SaleDateUTC.Value.ToShortDateString())</td>
+                                                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@context.FormattedCurrencySize</td>
+                                                    <td class="px-3 py-3 text-sm font-medium text-gray-500">
+                                                        @{
+                                                            var href = IsPublishedOnly ? $"/deal/{context.HistoryDealID}?ref={referral}" : $"/deal/{context.Id}?ref={referral}";
+                                                        }
+                                                        <button @onclick="@(() => navigationManager.NavigateTo(href))" class="after:absolute after:inset-0 text-emerald-600 hover:text-emerald-800">@context.Issuer</button>
+                                                    </td>
+                                                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@context.State</td>
+                                                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@context.OfferingType</td>
+                                                    @if (ShowStatus)
+                                                    {
+                                                        <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@context.Status</td>
+                                                    }
+                                                    else
+                                                    {
+                                                        <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@string.Join(", ", @context.Series.OrderBy(x => x.CreatedDateUTC).Select(x => x.LeadManager).Where(x => !string.IsNullOrEmpty(x)))</td>
+                                                    }
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </WholeListTemplate>
+                    <EmptyTemplate>
+                        <div class="p-4 sm:p-0">
+                            <div class="border-4 border-dashed border-gray-200 rounded-lg p-6">
+                                <div class="flex flex-col justify-center text-center">
+                                    <div class="sm:w-1/2 mx-auto flex justify-center">
+                                        <NoData />
+                                    </div>
+                                    <div class="text-2xl font-bold text-gray-500 mt-6 mb-3">No Deals Yet</div>
+                                    <div class="text-base text-gray-500">Associated deals will appear here.<br />Is something missing? <a href="mailto:support@munichain.com" class="text-emerald-600 underline">Let us know</a>.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </EmptyTemplate>
+                </GenericList>
+            </div>
+        </div>
+    </div>
+}

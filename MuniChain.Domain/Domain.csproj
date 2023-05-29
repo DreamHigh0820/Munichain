@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+	</PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.7.32" />
+    <PackageReference Include="Hangfire.Core" Version="1.8.0-rc2" />
+    <PackageReference Include="Hangfire.MemoryStorage" Version="1.7.0" />
+	  <PackageReference Include="Syncfusion.Blazor.WordProcessor" Version="20.4.0.43" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MuniChain.Data\Data.csproj" />
+    <ProjectReference Include="..\MuniChain.Shared\Shared.csproj" />
+  </ItemGroup>
+</Project>

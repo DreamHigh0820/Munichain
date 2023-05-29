@@ -1,0 +1,105 @@
+﻿@page "/"
+<SfDialog Target="#target" Height="auto" Width="500" ShowCloseIcon="true" Header="Create New Deal" @bind-Visible="@ShowCreateDealPopup" AllowPrerender="true" IsModal="true">
+    <DialogTemplates>
+        <Content>
+            <EditForm Model="@createDeal" OnValidSubmit="CreateDeal">
+                <div class="space-y-4">
+                    <DataAnnotationsValidator />
+                    @* Issuer *@
+                    <div class="col-span-6 sm:col-span-3">
+                        <label for="issuer" class="block text-sm font-medium text-gray-700">Issuer</label>
+                        <div class="mt-1 sm:col-span-2">
+                            <div class="col-span-6 sm:col-span-3">
+                                <IssuerSelect createDeal="createDeal" user="@user"></IssuerSelect>
+                            </div>
+                            <ValidationMessage For="@(() => createDeal.Issuer)" />
+                        </div>
+                    </div>
+                    @* Sale Date *@
+                    <div class="col-span-6 sm:col-span-2">
+                        <label for="sale-date" class="block text-sm font-medium text-gray-700">Sale Date</label>
+                        <div class="mt-1 sm:col-span-2">
+                            <div class="max-w-lg flex rounded-md shadow-sm">
+                                <InputDate @bind-Value="createDeal.SaleDateUTC" TValue="DateTime?" Placeholder='Choose a Date' class="max-w-lg block w-full shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm border-gray-300 rounded-md"></InputDate>
+                            </div>
+                            <ValidationMessage For="@(() => createDeal.SaleDateUTC)" />
+                        </div>
+                    </div>
+                    <div class="col-span-6 sm:col-span-3">
+                        <label for="offering-type" class="block text-sm font-medium text-gray-700">Offering Type</label>
+                        <InputSelect @bind-Value="createDeal.OfferingType" id="offering-type" name="offering-type" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                            <option selected></option>
+                            <option>Competitive</option>
+                            <option>Negotiated</option>
+                            <option>Private Placement</option>
+                        </InputSelect>
+                    </div>
+                    @* Size *@
+                    <div class="col-span-12 sm:col-span-6">
+                        <label for="series-size" class="block text-sm font-medium text-gray-700">Issue Size</label>
+                        <div class="mt-1 sm:col-span-2">
+                            <div class="flex rounded-md shadow-sm currency-field">
+                                <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                                    $
+                                </span>
+                                <SfNumericTextBox @bind-Value="createDeal.Size" TValue="decimal?" Min=0 Max=10000000000 Format="n2" id="dealSize" ShowSpinButton=false class="flex-1 block w-full focus:ring-emerald-500 focus:border-emerald-500 min-w-0 rounded-none rounded-r-md sm:text-sm border-gray-300">
+                                    <NumericTextBoxEvents TValue="decimal?" Created='() => { onCreated("#dealSize"); }'></NumericTextBoxEvents>
+                                </SfNumericTextBox>
+                            </div>
+                            <ValidationMessage For="@(() => createDeal.Size)" />
+                        </div>
+                    </div>
+                    @* State *@
+                    <div class="col-span-6 sm:col-span-2">
+                        <label for="issuer-state" class="block text-sm font-medium text-gray-700">Issuer State</label>
+                        <div class="mt-1 sm:col-span-2">
+                            <div class="max-w-lg flex rounded-md shadow-sm">
+                                <SfDropDownList TValue="States?" TItem="string" DataSource="@EnumValues" @bind-Value="createDeal.State"></SfDropDownList>
+                            </div>
+                            <ValidationMessage For="@(() => createDeal.State)" />
+                        </div>
+                    </div>
+                    <button type="submit" id="sendButton" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600">Create</button>
+                </div>
+            </EditForm>
+        </Content>
+    </DialogTemplates>
+</SfDialog>
+
+<div class="py-10">
+    <header>
+        <div class="mx-auto px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
+            <div class="flex items-center justify-between">
+                <h1 class="text-3xl font-bold leading-tight text-gray-900">
+                    Dashboard
+                </h1>
+                @if (!loading)
+                {
+                    if (user?.Confirmed == true)
+                    {
+                        <button @onclick="(() => ShowCreateDealModal())" type="button" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 space-x-3">
+                            <span><i class="fa-solid fa-plus"></i></span>
+                            <span>Create New Deal</span>
+                        </button>
+                    }
+                }
+            </div>
+        </div>
+    </header>
+    <main>
+        <div class="mx-auto sm:px-6 lg:px-8">
+            <div>
+                <section aria-labelledby="section-1-title">
+                    <h2 class="sr-only" id="section-1-title">Your Deals</h2>
+                    <DealsGrid IsPublishedOnly=false UserId="@user?.Id" TableName="Your Deals" />
+                </section>
+            </div>
+        </div>
+    </main>
+</div>
+
+<style>
+    .validation-message {
+        color: red;
+    }
+</style>

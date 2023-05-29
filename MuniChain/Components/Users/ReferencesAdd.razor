@@ -1,0 +1,31 @@
+@inject AuthenticationStateProvider authenticationStateProvider
+
+<div class="bg-white shadow sm:rounded-lg sm:overflow-hidden border-emerald-600 border">
+    <div class="divide-y divide-gray-200">
+        <div class="px-4 py-5 sm:p-6 space-y-1">
+            <div class="flex items-center justify-start space-x-2">
+                <div class="text-emerald-600 text-lg"><i class="fa-solid fa-circle-check"></i></div>
+                <div class="text-gray-500 text-sm">This deal has been completed.</div>
+            </div>
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Add a Reference for the Municipal Advisor</h3>
+        </div>
+    </div>
+    <div class="bg-gray-50 px-4 py-6 sm:px-6">
+        <div class="flex space-x-3">
+            <div class="flex-shrink-0">
+                <img class="h-10 w-10 rounded-full" src="@user.BlobUrl/default.png" alt="Display Name">
+            </div>
+            <div class="min-w-0 flex-1">
+                <form>
+                    <div>
+                        <label for="reference" class="sr-only">Add a Reference</label>
+                        <textarea @bind="referenceToAdd.Message" id="reference" name="reference" rows="3" class="shadow-sm block w-full focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm border border-gray-300 rounded-md" placeholder="What did the Municipal Advisor Firm do well?"></textarea>
+                    </div>
+                    <div class="mt-3 flex items-center justify-end">
+                        <button @onclick="OnSubmit" class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">Add Reference</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,211 @@
+﻿@page "/advisor/{id}"
+@inject IUserService userService
+@inject IDealService deals
+@inject IDealParticipantService dealParticipants
+@inject IFirmsService firmService
+
+<div class="mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+    <nav class="flex" aria-label="Breadcrumb">
+        <ol role="list" class="flex items-center space-x-4">
+            <li>
+                <div>
+                    <a href="/" class="text-gray-400 hover:text-gray-500">
+                        <svg class="flex-shrink-0 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                        </svg>
+                        <span class="sr-only">Home</span>
+                    </a>
+                </div>
+            </li>
+            <li>
+                <div class="flex items-center">
+                    <svg class="flex-shrink-0 h-5 w-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                        <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
+                    </svg>
+                    <a href="/advisors" class="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700">Advisors</a>
+                </div>
+            </li>
+            <li>
+                <div class="flex items-center">
+                    <svg class="flex-shrink-0 h-5 w-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                        <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
+                    </svg>
+                    <div class="ml-4 text-sm font-medium text-gray-500" aria-current="page">
+                        @if (user == null)
+                        {
+                            <span>Individual Advisor</span>
+                        }
+                        else
+                        {
+                            <span>@user?.DisplayName</span>
+                        }
+                    </div>
+                </div>
+            </li>
+        </ol>
+    </nav>
+</div>
+
+@if (loading)
+{
+    <main class="py-10">
+        <div class="mx-auto sm:px-6 lg:px-8">
+            <UI.Components.Loading.GenericLoading />
+        </div>
+    </main>
+}
+else
+{
+    <ConfirmedAuthorizeView>
+        <main class="py-10">
+            <div class="mx-auto sm:px-6 lg:px-8">
+                <!-- Profile Overview -->
+                <div class="bg-white shadow overflow-hidden sm:rounded-lg pb-12 mb-8">
+                    <!-- Profile Header -->
+                    <div>
+                        <div>
+                            <!-- Show this if background image -->
+                            @* <img class="h-32 w-full object-cover lg:h-48" src="" alt="Profile Background"> *@
+                            <!-- Else show this if no background image -->
+                            <div class="h-32 w-full object-cover lg:h-48 relative z-0">
+                                <div class="absolute inset-0">
+                                    <div class="absolute inset-0 bg-gradient-to-r from-emerald-800 to-emerald-700"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mx-auto px-4 sm:px-6">
+                            <div class="-mt-12 sm:-mt-16 sm:flex sm:items-end sm:space-x-5">
+                                <div class="flex rounded-full z-10">
+                                    <!-- If no profile picture on error, load the default from Blob Storage -->
+                                    <img id="currentPhoto" src="@user?.ProfilePicUrl" onerror="this.onerror=null; this.src='images/default.png'" alt="Profile Picture" class="h-24 w-24 rounded-full bg-white ring-4 ring-white sm:h-32 sm:w-32 border shadow-inner">
+                                </div>
+                                <div class="mt-6 sm:flex-1 sm:min-w-0 sm:flex sm:items-center sm:justify-end sm:space-x-6 sm:pb-1">
+                                    <div class="mt-6 min-w-0 flex-1">
+                                        <h1 class="text-2xl font-bold text-gray-900 truncate">
+                                            @user.DisplayName
+                                        </h1>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Profile Detail -->
+                    <div class="mt-5 mx-auto px-4 sm:px-6 border-t">
+                        <dl class="grid grid-cols-1 gap-8 sm:grid-cols-3 pt-8">
+                            @if (user?.Bio != null)
+                            {
+                                <div class="sm:col-span-2">
+                                    <dt class="text-sm font-medium text-gray-500">
+                                        Bio
+                                    </dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        @user?.Bio
+                                    </dd>
+                                </div>
+                            }
+                            @if (user?.AssociatedFirm != null)
+                            {
+                                <div class="sm:col-span-1">
+                                    <dt class="text-sm font-medium text-gray-500">
+                                        Firm
+                                    </dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        <a href="@($"/firm/{user?.AssociatedFirm?.Id}")" class="mt-1 flex flex-col p-4 rounded-lg border border-gray-300 shadow-sm hover:bg-gray-50">
+                                            <div class="flex items-center space-x-3">
+                                                <h3 class="truncate text-sm font-medium text-gray-900">@user?.AssociatedFirm?.Name</h3>
+                                                <span class="inline-block flex-shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">@user?.AssociatedFirm?.FirmType.GetDescription()</span>
+                                            </div>
+                                            <p class="mt-2 truncate text-xs text-gray-500">@user?.AssociatedFirm?.Members.Count() member(s)</p>
+                                        </a>
+                                    </dd>
+                                </div>
+                            }
+                            <div class="sm:col-span-1">
+                                <dt class="text-sm font-medium text-gray-500">
+                                    Email
+                                </dt>
+                                <dd class="mt-1 text-sm text-gray-900">
+                                    @user?.Email
+                                </dd>
+                            </div>
+                            @if (user?.PhoneNumber != null)
+                            {
+                                <div class="sm:col-span-1">
+                                    <dt class="text-sm font-medium text-gray-500">
+                                        Phone
+                                    </dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        @user?.PhoneNumber
+                                    </dd>
+                                </div>
+                            }
+                            @if (user?.JobTitle != null)
+                            {
+                                <div class="sm:col-span-1">
+                                    <dt class="text-sm font-medium text-gray-500">
+                                        Role
+                                    </dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        @user?.JobTitle
+                                    </dd>
+                                </div>
+                            }
+                            @if (user?.City != null)
+                            {
+                                <div class="sm:col-span-1">
+                                    <dt class="text-sm font-medium text-gray-500">
+                                        City
+                                    </dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        @user?.City
+                                    </dd>
+                                </div>
+                            }
+                            @if (user?.StateValue != null)
+                            {
+                                <div class="sm:col-span-1">
+                                    <dt class="text-sm font-medium text-gray-500">
+                                        State
+                                    </dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        @user?.StateValue
+                                    </dd>
+                                </div>
+                            }
+                            @if (user?.PostalCode != null)
+                            {
+                                <div class="sm:col-span-1">
+                                    <dt class="text-sm font-medium text-gray-500">
+                                        Zip Code
+                                    </dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        @user?.PostalCode
+                                    </dd>
+                                </div>
+                            }
+                            @if (user.AreasOfExpertise != null && user.AreasOfExpertise.Any())
+                            {
+                                <div class="sm:col-span-1">
+                                    <dt class="text-sm font-medium text-gray-500">
+                                        Areas of Expertise
+                                    </dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        @string.Join(", ", user?.AreasOfExpertise)
+                                    </dd>
+                                </div>
+                            }
+                        </dl>
+                    </div>
+                </div>
+                    @* Only load deals table on advisor page for MA's*@
+                    @if (user.JobTitle == "Municipal Advisor")
+                    {
+                        <div class="grid grid-cols-1 gap-8 lg:col-span-2">
+                            <DealsGrid ShowStatus=false IsPublishedOnly=true UserId="@user.Id" TableName="@user?.DisplayName"></DealsGrid>
+                        </div>
+                    }
+                    
+            </div>
+        </main>
+    </ConfirmedAuthorizeView>
+}

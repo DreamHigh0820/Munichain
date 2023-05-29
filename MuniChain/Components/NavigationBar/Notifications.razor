@@ -1,0 +1,82 @@
+﻿@page "/notifications"
+@inject AuthenticationStateProvider authenticationStateProvider
+@inject INotificationService notificationService
+@inject IUserService userService
+@inject IDealService dealService
+
+@if (loading)
+{
+    <main class="py-10">
+        <div class="mx-auto sm:px-6 lg:px-8">
+            <UI.Components.Loading.GenericLoading />
+        </div>
+    </main>
+}
+else
+{
+    <ConfirmedAuthorizeView>
+        <main class="py-10">
+            <div class="mx-auto sm:px-6 lg:px-8">
+                <div class="bg-white shadow overflow-hidden sm:rounded-lg mt-8 divide-y">
+                    <div class="px-4 py-5 sm:px-6">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">Notifications</h3>
+                    </div>
+                    <div class="px-4 py-5 sm:px-6 pt-4">
+                        <div>
+                            <div class="flex items-center justify-start space-x-3 w-full pb-4 bg-white border-b">
+                                <SfDropDownList @bind-Value="@currentDealFilter" ShowClearButton=true TValue="DealModel" TItem="DealModel" Placeholder="Filter by Deal" DataSource="deals">
+                                    <DropDownListEvents TItem="DealModel" TValue="DealModel" ValueChange="ChangeDealFilter"></DropDownListEvents>
+                                    <DropDownListTemplates TItem="DealModel" Context="ctx">
+                                        <ItemTemplate>
+                                            <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                                                <div>
+                                                    <span>@((ctx as DealModel).Issuer)</span>,&nbsp;<span>@((ctx as DealModel).State)</span>
+                                                </div>
+                                                <div><span>@((ctx as DealModel).FormattedCurrencySize)</span></div>
+                                            </div>
+                                        </ItemTemplate>
+                                    </DropDownListTemplates>
+                                    <DropDownListFieldSettings Text="Issuer"></DropDownListFieldSettings>
+                                </SfDropDownList>
+                            </div>
+                            @if (notifications != null && notifications.Any())
+                            {
+                                <div class="max-h-96 overflow-auto">
+                                    <Virtualize Items="@notifications" Context="virtualCtx">
+                                        <section class="relative pt-4 mt-4 border-t first-of-type:border-t-0 first-of-type:mt-0 last-of-type:mb-0">
+                                            <div class="relative flex items-center space-x-3">
+                                                <div>
+                                                    @if (virtualCtx.IsRead)
+                                                    {
+                                                        <span class="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center ring-8 ring-white text-gray-400">
+                                                            <i class="fa-solid fa-check"></i>
+                                                        </span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center ring-8 ring-white text-emerald-600">
+                                                            <i class="fa-solid fa-bell"></i>
+                                                        </span>
+                                                    }
+                                                </div>
+                                                <div class="min-w-0 flex-1 flex justify-between space-x-4">
+                                                    <div>
+                                                        <p class="text-sm text-gray-500"><span class="font-medium text-gray-900">@virtualCtx.ActionBy</span> @virtualCtx.Title</p>
+                                                        <p class="text-sm text-gray-500">@virtualCtx.SubTitle</p>
+                                                    </div>
+                                                    <div class="text-right text-sm whitespace-nowrap text-gray-500">
+                                                        <time datetime="2020-09-28">@virtualCtx.DateTimeUTC.ToUserTimeZone(LoggedInUser) </time>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </section>
+                                    </Virtualize>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </ConfirmedAuthorizeView>
+}

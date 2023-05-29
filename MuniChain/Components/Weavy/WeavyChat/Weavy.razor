@@ -1,0 +1,28 @@
+@implements IDisposable
+@inject WeavyJsInterop WeavyService
+
+<CascadingValue Value="WeavyRef">
+    @ChildContent
+</CascadingValue>
+
+@code{
+    WeavyReference WeavyRef;
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public string url{ get; set; }
+    [Parameter]
+    public string token{ get; set; }
+    [Parameter]
+    public string timezone{ get; set; }
+
+    protected override void OnInitialized() {
+        WeavyRef = new(WeavyService, url, token, timezone);
+    }
+
+    public void Dispose() {
+        WeavyRef?.Destroy();
+    }
+}

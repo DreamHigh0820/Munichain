@@ -1,0 +1,351 @@
+﻿@page "/profile"
+@inject AuthenticationStateProvider authenticationStateProvider
+@inject IFileService fileService
+@inject IUserService userService
+@inject IAIService aiService
+@inject INotificationPreferenceService notificationPreferences
+
+<SfDialog Width="300px" ShowCloseIcon="true" IsModal="true" @bind-Visible="@IsCustomValueVisible">
+    <DialogTemplates>
+        <Header>Other</Header>
+        <Content>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Please enter a custom value:</label>
+                <SfTextBox @ref="CustomValue" Placeholder='Custom'></SfTextBox>
+            </div>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="OK" IsPrimary="true" OnClick="@CloseCustomInput" />
+    </DialogButtons>
+</SfDialog>
+
+@if (loading)
+{
+    <Loading loading=loading Delay=false SimpleLoader=true></Loading>
+}
+else
+{
+
+    <main class="py-10">
+
+        <div class="mx-auto sm:px-6 lg:px-8 space-y-8">
+            <div class="bg-white shadow overflow-hidden sm:rounded-lg pb-6">
+
+                <!-- Profile Header -->
+                <div>
+                    <div>
+                        <!-- Show this if background image -->
+                        @* <img class="h-32 w-full object-cover lg:h-48" src="" alt="Profile Background"> *@
+                        <!-- Else show this if no background image -->
+                        <div class="h-32 w-full object-cover lg:h-48 relative z-0">
+                            <div class="absolute inset-0">
+                                <div class="absolute inset-0 bg-gradient-to-r from-emerald-800 to-emerald-700"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="px-4 sm:px-6">
+                        <div class="-mt-12 sm:-mt-16 sm:flex sm:items-end sm:space-x-5">
+                            <div class="flex rounded-full z-10">
+                                <!-- If no profile picture on error, load the default from Blob Storage -->
+                                <img id="currentPhoto" src="@profilePictureUrl" onerror="this.onerror=null; this.src='images/default.png'" alt="Profile Picture" class="h-24 w-24 rounded-full bg-white ring-4 ring-white sm:h-32 sm:w-32 border shadow-inner">
+                            </div>
+                            <div class="mt-6 sm:flex-1 sm:min-w-0 sm:flex sm:items-center sm:justify-end sm:space-x-6 sm:pb-1">
+                                <div class="mt-6 min-w-0 flex-1">
+                                    <h1 class="text-2xl font-bold text-gray-900 truncate">
+                                        @user.DisplayName
+                                    </h1>
+                                </div>
+                                <div class="mt-6 flex flex-col justify-stretch space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4">
+                                    @{
+                                        var url = $"https://www.linkedin.com/profile/add?name=Munichain%20Verified&organizationId=69694541&issueYear=2022&certUrl=https%3A%2F%2Fdemo.munichain.com/advisor/{user.Id}";
+                                    }
+                                    <div class="inline-flex">
+                                        <a href="@url" target="_blank">
+                                            <img src="https://download.linkedin.com/desktop/add2profile/buttons/en_US.png" alt="LinkedIn Add to Profile button" />
+                                        </a>
+                                    </div>
+                                    <button @onclick="@OnProfileClick" type="button" class="inline-flex justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 space-x-2">
+                                        <div><i class="fa-regular fa-id-badge"></i></div>
+                                        <span>Edit Profile Picture</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Directory Detail -->
+                <div class="mt-5 mx-auto px-4 sm:px-6 border-t">
+                    <dl class="grid grid-cols-1 gap-8 sm:grid-cols-3 pt-8">
+                        <div class="sm:col-span-1">
+                            <dt class="text-sm font-medium text-gray-500">
+                                Email
+                            </dt>
+                            <dd class="mt-1 text-sm text-gray-900">
+                                @user.Email
+                            </dd>
+                        </div>
+                        @if (user.PhoneNumber != null)
+                        {
+                            <div class="sm:col-span-1">
+                                <dt class="text-sm font-medium text-gray-500">
+                                    Phone
+                                </dt>
+                                <dd class="mt-1 text-sm text-gray-900">
+                                    @user.PhoneNumber
+                                </dd>
+                            </div>
+                        }
+                        @if (user.JobTitle != null)
+                        {
+                            <div class="sm:col-span-1">
+                                <dt class="text-sm font-medium text-gray-500">
+                                    Role
+                                </dt>
+                                <dd class="mt-1 text-sm text-gray-900">
+                                    @user.JobTitle
+                                </dd>
+                            </div>
+                        }
+                        @if (user.City != null)
+                        {
+                            <div class="sm:col-span-1">
+                                <dt class="text-sm font-medium text-gray-500">
+                                    City
+                                </dt>
+                                <dd class="mt-1 text-sm text-gray-900">
+                                    @user.City
+                                </dd>
+                            </div>
+                        }
+                        @if (user.StateValue != null)
+                        {
+                            <div class="sm:col-span-1">
+                                <dt class="text-sm font-medium text-gray-500">
+                                    State
+                                </dt>
+                                <dd class="mt-1 text-sm text-gray-900">
+                                    @user.StateValue
+                                </dd>
+                            </div>
+                        }
+                    </dl>
+                </div>
+
+            </div>
+
+            <!-- Public Profile -->
+            <div class="bg-white shadow sm:rounded-lg sm:overflow-hidden">
+                <div class="divide-y divide-gray-200">
+                    <div class="px-4 py-5 sm:px-6">
+                        <h2 id="public-profile" class="text-lg font-medium text-gray-900">Edit Profile</h2>
+                    </div>
+                    <div class="px-4 py-6 sm:px-6">
+                        <div class="grid grid-cols-12 gap-6">
+                            <div class="col-span-12 sm:col-span-6">
+                                <label for="display-name" class="block text-sm font-medium text-gray-700">Full Name</label>
+                                <div class="mt-1 sm:col-span-2">
+                                    <div class="col-span-6 sm:col-span-3">
+                                        <input @bind="user.DisplayName" type="text" name="display-name" id="display-name" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-span-12 sm:col-span-3">
+                                <label for="role-add" class="block text-sm font-medium text-gray-700">Job Title</label>
+                                <InputSelect @bind-Value="@user.JobTitle" @onchange="@(e => CustomValueChange(e, JobTitles, user, "JobTitle"))" id="job-title" name="job-title" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                    <option selected></option>
+                                    @foreach (var jobTitle in JobTitles)
+                                    {
+                                        <option>@jobTitle</option>
+                                    }
+                                    @if (!JobTitles.Contains(user.JobTitle) && !string.IsNullOrEmpty(user.JobTitle))
+                                    {
+                                        <option>@user.JobTitle</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-span-12 sm:col-span-3">
+                                <label for="city" class="block text-sm font-medium text-gray-700">City</label>
+                                <div class="mt-1 sm:col-span-2">
+                                    <div class="col-span-6 sm:col-span-3">
+                                        <input @bind="user.City" type="text" name="city" id="city" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-span-12 sm:col-span-3">
+                                <label for="state" class="block text-sm font-medium text-gray-700">State</label>
+                                <div class="mt-1 sm:col-span-2">
+                                    <div class="max-w-lg flex rounded-md shadow-sm">
+                                        <SfDropDownList PopupHeight="230px" Placeholder="NY" @bind-Value="@user.StateValue" DataSource="States">
+                                        </SfDropDownList>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-span-12 sm:col-span-3">
+                                <label for="zip" class="block text-sm font-medium text-gray-700">Zip Code</label>
+                                <div class="mt-1 sm:col-span-2">
+                                    <div class="col-span-6 sm:col-span-3">
+                                        <input @bind="user.PostalCode" type="text" name="zip" id="zip" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-span-12 sm:col-span-3">
+                                <label for="phone" class="block text-sm font-medium text-gray-700">Phone Number</label>
+                                <div class="mt-1 sm:col-span-2">
+                                    <div class="col-span-6 sm:col-span-3">
+                                        <input @bind="user.PhoneNumber" type="tel" name="phone" id="phone" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-span-12 sm:col-span-3">
+                                <label for="phone" class="block text-sm font-medium text-gray-700">Time Zone</label>
+                                <div class="mt-1 sm:col-span-2">
+                                    <div class="col-span-6 sm:col-span-3">
+                                        <InputSelect @bind-Value="user.TimeZone" id="time-zone" name="time-zone" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                            <option value="Eastern Standard Time">EST Eastern Standard Time</option>
+                                            <option value="Central Standard Time">CST Central Standard Time</option>
+                                            <option value="Mountain Standard Time">MST Mountain Standard Time</option>
+                                            <option value="Pacific Standard Time">PST Pacific Standard Time</option>
+                                        </InputSelect>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-span-12">
+                                <label for="bio" class="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                                <div class="border border-gray-300 bg-white rounded-lg shadow-sm overflow-hidden focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 relative pb-16">
+                                    <InputTextArea @bind-Value="user.Bio" rows="5" name="bio" id="bio" class="block w-full py-3 border-0 resize-none focus:ring-0 sm:text-sm" placeholder="Enter a short bio, or use the button below to help generate a bio..."></InputTextArea>
+                                    <button @onclick="GenerateAI" class="absolute inline-flex items-center bottom-3 left-3 justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 space-x-2">
+                                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                        <span>Generate with AI</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-span-12">
+                                <label for="bio" class="block text-sm font-medium text-gray-700 mb-1">Areas Of Expertise</label>
+                                <div class="bg-white rounded-lg shadow-sm overflow-hidden focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500">
+                                    <SfMultiSelect @bind-Value="user.AreasOfExpertise" TValue="List<string>" TItem="string" Placeholder="School Districts" DataSource="@SeriesPurpose">
+                                    </SfMultiSelect>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
+                    <button @onclick="UpdateUser" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">Save</button>
+                </div>
+            </div>
+
+            <!-- Email Notifications -->
+            <div class="bg-white shadow sm:rounded-lg sm:overflow-hidden">
+                <div class="divide-y divide-gray-200">
+                    <div class="px-4 py-6 sm:px-6 space-y-4">
+                        <h2 id="email-notifications" class="text-lg font-medium text-gray-900">Email Notifications</h2>
+                        <fieldset class="border-t">
+                            <legend class="sr-only">Email Notifications</legend>
+                            <div class="divide-y divide-gray-200">
+                                <div class="flex items-start justify-between py-4">
+                                    <div class="min-w-0 flex-1 text-sm">
+                                        <label for="comments" class="font-medium text-gray-700">Deal Changes</label>
+                                        <p id="deal-description" class="text-gray-500">Notify me when another participant changes deal information in a deal where I'm a participant.</p>
+                                    </div>
+                                    <div class="ml-3">
+                                        <SfCheckBox @bind-Checked="notifSettings.Deal"></SfCheckBox>
+                                    </div>
+                                </div>
+                                <div class="flex items-start justify-between py-4">
+                                    <div class="min-w-0 flex-1 text-sm">
+                                        <label for="comments" class="font-medium text-gray-700">Participant Changes</label>
+                                        <p id="partic-description" class="text-gray-500">Notify me when another participant adds or removed participants in a deal where I'm a participant.</p>
+                                    </div>
+                                    <div class="ml-3">
+                                        <SfCheckBox @bind-Checked="notifSettings.Participant"></SfCheckBox>
+                                    </div>
+                                </div>
+                                <div class="flex items-start justify-between py-4">
+                                    <div class="min-w-0 flex-1 text-sm">
+                                        <label for="comments" class="font-medium text-gray-700">Message Board Comments</label>
+                                        <p id="message-board-description" class="text-gray-500">Notify me when another participant comments on the message board in a deal where I'm a participant.</p>
+                                    </div>
+                                    <div class="ml-3">
+                                        <SfCheckBox @bind-Checked="notifSettings.MessageBoardComment"></SfCheckBox>
+                                    </div>
+                                </div>
+                                <div class="flex items-start justify-between py-4">
+                                    <div class="min-w-0 flex-1 text-sm">
+                                        <label for="comments" class="font-medium text-gray-700">Expenditure Changes</label>
+                                        <p id="expend-description" class="text-gray-500">Notify me when another participant adds or updates an expenditure in a deal where I'm a participant.</p>
+                                    </div>
+                                    <div class="ml-3">
+                                        <SfCheckBox @bind-Checked="notifSettings.Expenditure"></SfCheckBox>
+                                    </div>
+                                </div>
+                                <div class="flex items-start justify-between py-4">
+                                    <div class="min-w-0 flex-1 text-sm">
+                                        <label for="comments" class="font-medium text-gray-700">Performance Changes</label>
+                                        <p id="perf-description" class="text-gray-500">Notify me when another participant changes a performance item in a deal where I'm a participant.</p>
+                                    </div>
+                                    <div class="ml-3">
+                                        <SfCheckBox @bind-Checked="notifSettings.Performance"></SfCheckBox>
+                                    </div>
+                                </div>
+                                <div class="flex items-start justify-between py-4">
+                                    <div class="min-w-0 flex-1 text-sm">
+                                        <label for="comments" class="font-medium text-gray-700">Firm Changes</label>
+                                        <p id="firm-description" class="text-gray-500">Notify me when another firm member adds or removed a firm member in my firm.</p>
+                                    </div>
+                                    <div class="ml-3">
+                                        <SfCheckBox @bind-Checked="notifSettings.Firm"></SfCheckBox>
+                                    </div>
+                                </div>
+                                <div class="flex items-start justify-between py-4">
+                                    <div class="min-w-0 flex-1 text-sm">
+                                        <label for="comments" class="font-medium text-gray-700">Document Comments</label>
+                                        <p id="comments-description" class="text-gray-500">Notify me when another participant uploads or comments on a public document in a deal where I'm a participant.</p>
+                                    </div>
+                                    <div class="ml-3">
+                                        <SfCheckBox @bind-Checked="notifSettings.DocumentCommented"></SfCheckBox>
+                                    </div>
+                                </div>
+                                <div class="flex items-start justify-between py-4">
+                                    <div class="min-w-0 flex-1 text-sm">
+                                        <label for="comments" class="font-medium text-gray-700">Document Visibility Changes</label>
+                                        <p id="doc-vis-description" class="text-gray-500">Notify me when another participant changes a documents visibility in a deal where I'm a participant.'</p>
+                                    </div>
+                                    <div class="ml-3">
+                                        <SfCheckBox @bind-Checked="notifSettings.Document"></SfCheckBox>
+                                    </div>
+                                </div>
+                                <div class="flex items-start justify-between py-4">
+                                    <div class="min-w-0 flex-1 text-sm">
+                                        <label for="comments" class="font-medium text-gray-700">Document Participant Changes</label>
+                                        <p id="doc-part-description" class="text-gray-500">Notify me when another participant changes which participants can view a document in a deal where I'm a participant.</p>
+                                    </div>
+                                    <div class="ml-3">
+                                        <SfCheckBox @bind-Checked="notifSettings.DocumentParticipant"></SfCheckBox>
+                                    </div>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                </div>
+                <div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
+                    <button @onclick="UpdateEmailNotification" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">Save</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Edit Profile Picture Modal -->
+    <SfDialog Width="440px" Target="#target" IsModal="true" @bind-Visible="Visibility">
+        <DialogTemplates>
+            <Header>Edit Profile Picture</Header>
+            <Content>
+                <InputFile OnChange="UploadProfilePicture" class="file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"></InputFile>
+            </Content>
+        </DialogTemplates>
+        <DialogEvents OnOverlayModalClick="(() => this.Visibility = false)"></DialogEvents>
+        <DialogAnimationSettings Effect="@animationEffect"></DialogAnimationSettings>
+    </SfDialog>
+}

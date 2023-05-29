@@ -1,0 +1,177 @@
+@inject IDealService dealService
+
+<div>
+    <button @onclick="@BuildScale" type="button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 whitespace-nowrap">Scale Builder</button>
+</div>
+
+<SfDialog IsModal="true" Width="75%" Target="#target" ShowCloseIcon="true" @bind-Visible="FirstVisibility">
+    <DialogEvents OnOverlayModalClick="(() => FirstVisibility = false)"></DialogEvents>
+    <DialogTemplates>
+        <Header>Add Scale Information</Header>
+        <Content>
+            <div class="space-y-4">
+                <div class="text-lg">Please enter the first maturity, last maturity, and frequency.</div>
+                @foreach (var frequency in modalObject) {
+                    <div class="flex items-end w-full space-x-3">
+                        <div class="grid grid-cols-12 gap-3 grow">
+                            <div class="col-span-12 md:col-span-4">
+                                <label for="dated-date" class="block text-sm font-medium text-gray-700">First Maturity Date</label>
+                                <div class="mt-1 sm:col-span-2">
+                                    <div class="flex rounded-md shadow-sm">
+                                        <InputDate @bind-Value="frequency.FirstMaturityDate" TValue="DateTime?" PlaceHolder="MM/DD/YYYY" class="max-w-lg block w-full shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm border-gray-300 rounded-md"></InputDate>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-span-12 md:col-span-4">
+                                <label for="dated-date" class="block text-sm font-medium text-gray-700">Last Maturity Date</label>
+                                <div class="mt-1 sm:col-span-2">
+                                    <div class="flex rounded-md shadow-sm">
+                                        <InputDate @bind-Value="frequency.LastMaturityDate" TValue="DateTime?" PlaceHolder="MM/DD/YYYY" class="max-w-lg block w-full shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm border-gray-300 rounded-md"></InputDate>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-span-12 md:col-span-4">
+                                <label for="frequency" class="block text-sm font-medium text-gray-700">Maturity Frequency</label>
+                                <InputSelect @bind-Value="frequency.Frequency" id="frequency" name="frequency" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                    <option value="Annual">Annual</option>
+                                    <option value="SemiAnnual">Semi Annual</option>
+                                </InputSelect>
+                            </div>
+                        </div>
+                        <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 space-x-3 whitespace-nowrap" @onclick="(() => modalObject.Remove(frequency))">
+                            <span class="leading-5"><i class="fa-regular fa-trash-can"></i></span>
+                        </button>
+                    </div>
+                    @if (frequency?.ErrorMessage?.Any() == true)
+                    {
+                        @foreach (var msg in frequency.ErrorMessage)
+                        {
+                            <p class="text-red-700">@msg</p>
+                        }
+                    }
+
+                }
+                <button class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none" @onclick="AddRange">Add Additional Range</button>
+            </div>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="Create Scale" IsPrimary="true" OnClick="@CreateScale" />
+    </DialogButtons>
+</SfDialog>
+
+@code {
+
+    [Parameter]
+    public Series series {get; set;}
+    [Parameter]
+    public DealModel dealInformation { get; set; }
+    [Parameter]
+    public EventCallback<Task> UpdateGrid { get; set; }
+    List<ScaleBuilderModal> modalObject = new();
+    private bool FirstVisibility { get; set; } = false;
+    private void BuildScale()
+    {
+        modalObject = new() {
+            new ScaleBuilderModal() {
+                FirstMaturityDate = null,
+                LastMaturityDate = null,
+                Frequency = MaturityFrequency.Annual
+            }
+        };
+
+        this.FirstVisibility = true;
+    }
+
+    private void AddRange()
+    {
+        modalObject.Add(new ScaleBuilderModal()
+            {
+                FirstMaturityDate = DateTime.Now,
+                LastMaturityDate = null,
+                Frequency = MaturityFrequency.Annual
+            });
+
+        this.FirstVisibility = true;
+    }
+
+    private async Task CreateScale()
+    {
+        // Reset errors when trying to create scale
+        modalObject.ForEach(x => x.ErrorMessage = new List<string>());
+        List<Maturity> createdMaturities = new();
+
+        foreach(var frequency in modalObject) {
+            // Last Maturity date has to be after first maturity date when not null
+            if (frequency.LastMaturityDate != null && frequency.LastMaturityDate <= frequency.FirstMaturityDate)
+            {
+                frequency.ErrorMessage.Add("Last Maturity date has to be after First Maturity Date");
+            }
+            // Last Maturity should either be 6/12 months after first maturity
+            if (frequency.FirstMaturityDate < dealInformation.SaleDateUTC)
+            {
+                frequency.ErrorMessage.Add("Maturity dates have to be after Deal Sale Date");
+            }
+
+            Maturity currentMaturity = new Maturity()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    CreatedDateUTC = DateTime.Now.ToUniversalTime(),
+                    MaturityDateUTC = frequency.FirstMaturityDate,
+                    SeriesId = series.Id,
+                };
+
+            if (frequency.FirstMaturityDate == null)
+            {
+                frequency.ErrorMessage.Add("Must contain valid first maturity date.");
+            }
+
+            if (frequency.LastMaturityDate == null)
+            {
+                if (!series.Maturities.Where(x => x.MaturityDateUTC.HasValue).Select(x => x.MaturityDateUTC.Value.ToShortDateString()).Contains(currentMaturity.MaturityDateUTC.Value.ToShortDateString()))
+                {
+                    createdMaturities.Add(currentMaturity);
+                }
+                break;
+            }
+
+            while (DateTime.Compare(currentMaturity.MaturityDateUTC.Value, frequency.LastMaturityDate.Value) <= 0)
+            {
+                if (!series.Maturities.Select(x => x.MaturityDateUTC).Contains(currentMaturity.MaturityDateUTC.Value))
+                {
+                    createdMaturities.Add(currentMaturity);
+                }
+
+                currentMaturity = new Maturity()
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        MaturityDateUTC = currentMaturity.MaturityDateUTC.Value.AddMonths(frequency.Frequency == MaturityFrequency.Annual ? 12 : 6),
+                        SeriesId = series.Id,
+                    };
+            }
+        }
+
+        if (modalObject.Select(x => x.ErrorMessage).Any(x => x.Count > 0))
+        {
+            // Errors
+        }
+        else
+        {
+            series.Maturities.AddRange(createdMaturities);
+            await UpdateGrid.InvokeAsync();
+            this.FirstVisibility = false;
+        }
+    }
+
+    public class ScaleBuilderModal {
+        public DateTime? FirstMaturityDate;
+        public DateTime? LastMaturityDate;
+        public MaturityFrequency Frequency;
+        public List<string> ErrorMessage;
+    }
+
+    public enum MaturityFrequency {
+        Annual,
+        SemiAnnual
+    }
+}

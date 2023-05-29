@@ -1,0 +1,305 @@
+﻿@inject AuthenticationStateProvider authenticationStateProvider
+@inject IDocumentService documentService
+@inject IDealParticipantService dealParticipantService
+@inject IDealService dealService
+@inject IFileService fileService
+@inject IEmailService emailService
+@inject IBoldsignService boldsignService
+@inject INotificationService notificationService
+@inject IUserService userService
+@implements IDisposable
+
+<SfDialog Width="300px" ShowCloseIcon="true" IsModal="true" @bind-Visible="@IsCustomValueVisible">
+    <DialogTemplates>
+        <Header> Dialog </Header>
+        <Content>
+            <div>
+                <label>Please enter a custom value:</label>
+                <SfTextBox @ref="CustomValue" Placeholder='Custom'></SfTextBox>
+            </div>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="OK" IsPrimary="true" OnClick="@CloseCustomInput" />
+    </DialogButtons>
+</SfDialog>
+
+<Loading loading="@uploading" Delay=false Overlay=true PercentageProgress="ProgressPercent" Message="Please wait while the file uploads"></Loading>
+
+
+@if (loading)
+{
+    <UI.Components.Loading.GenericLoading />
+}
+else
+{
+    <div class="grid grid-cols-1 gap-4 items-start lg:grid-cols-4 lg:gap-6">
+        @* If upload permissions *@
+        @if (IsPublicView == false)
+        {
+            <div class="rounded-lg bg-white overflow-hidden shadow lg:col-span-4">
+                <div class="p-4 sm:p-6 space-y-4">
+                    <div class="text-lg leading-6 font-medium text-gray-900">Upload New Document</div>
+                    <div class="grid grid-cols-6 gap-4">
+                        <div class="col-span-6 sm:col-span-4">
+                            <label for="email" class="block text-sm font-medium text-gray-700">Document Name</label>
+                            <div class="mt-1">
+                                <input @bind-value="@documentToUpload.Name" type="text" name="fname" id="fname" class="shadow-sm focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:text-sm border-gray-300 rounded-md" placeholder="Enter Document Name">
+                            </div>
+                        </div>
+                        <div class="col-span-6 sm:col-span-2">
+                            <label for="document-type" class="block text-sm font-medium text-gray-700">Document Type</label>
+                            <InputSelect @bind-Value="@documentToUpload.Type" @onchange="@(e => CustomValueChange(e, DocumentTypes, documentToUpload, "Type"))" id="document-type" name="esg-verifier" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                <option selected></option>
+                                @foreach (var documentType in DocumentTypes)
+                                {
+                                    <option>@documentType</option>
+                                }
+                                @if (!DocumentTypes.Contains(documentToUpload.Type) && !string.IsNullOrEmpty(documentToUpload.Type))
+                                {
+                                    <option>@documentToUpload.Type</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        @* New Document Permissions *@
+                        <div class="col-span-6 sm:col-span-4">
+                            <div>
+                                <label class="text-sm font-medium text-gray-700">Document Permissions</label>
+                                <fieldset class="mt-4">
+                                    <legend class="sr-only">Document Permissions</legend>
+                                    <div>
+                                        <EditForm Model="@documentToUpload" class="space-y-4 sm:flex sm:items-center sm:space-y-0 sm:space-x-10">
+                                            <InputRadioGroup Name="document-permissions" @bind-Value="documentToUpload.PublicDocumentViewSettings">
+                                                @if (dealParticipants.Select(x => x.EmailAddress).Contains(user.Email))
+                                                {
+                                                    <div class="flex items-center">
+                                                        <InputRadio Value="PublicDocumentViewSettings.Public" id="public" name="document-permissions" type="radio" checked="checked" class="focus:ring-emerald-500 h-4 w-4 text-emerald-600 border-gray-300" />
+                                                        <label for="public" class="ml-3 block text-sm font-medium text-gray-700">Public</label>
+                                                    </div>
+                                                }
+                                                <div class="flex items-center">
+                                                    <InputRadio Value="PublicDocumentViewSettings.Participants" id="participants" name="document-permissions" type="radio" class="focus:ring-emerald-500 h-4 w-4 text-emerald-600 border-gray-300" />
+                                                    <label for="participants" class="ml-3 block text-sm font-medium text-gray-700">Deal Participants Only</label>
+                                                </div>
+                                                <div class="flex items-center">
+                                                    <InputRadio Value="PublicDocumentViewSettings.Private" id="private" name="document-permissions" type="radio" class="focus:ring-emerald-500 h-4 w-4 text-emerald-600 border-gray-300" />
+                                                    <label for="private" class="ml-3 block text-sm font-medium text-gray-700">Private (Only Me)</label>
+                                                </div>
+                                                <div class="flex items-center">
+                                                    <InputRadio Value="PublicDocumentViewSettings.Custom" id="custom" name="document-permissions" type="radio" class="focus:ring-emerald-500 h-4 w-4 text-emerald-600 border-gray-300" />
+                                                    <label for="custom" class="ml-3 block text-sm font-medium text-gray-700">Select Participants</label>
+                                                </div>
+                                            </InputRadioGroup>
+                                        </EditForm>
+                                    </div>
+                                </fieldset>
+                            </div>
+                        </div>
+                        @* Show this div if Select Participants is checked *@
+                        @if (documentToUpload.PublicDocumentViewSettings == PublicDocumentViewSettings.Custom)
+                        {
+                            <div class="col-span-6 sm:col-span-2">
+                                <div class="text-sm font-medium text-gray-700 mb-1">Select Participants</div>
+                                <SfMultiSelect @bind-Value="documentToUpload.UserPermissions" Enabled="@(documentToUpload.PublicDocumentViewSettings == PublicDocumentViewSettings.Custom)" TValue="List<string>" TItem="DealParticipant" AllowFiltering="true" Placeholder="Select Specific Deal Participants" Mode="@VisualMode.CheckBox" DataSource="@dealParticipants.Where(x => x.EmailAddress != user.Email)" ShowDropDownIcon="true" FilterBarPlaceholder="Search Deal Participants" PopupHeight="350px">
+                                    <MultiSelectFieldSettings Text="EmailAddress" Value="EmailAddress"></MultiSelectFieldSettings>
+                                </SfMultiSelect>
+                            </div>
+                        }
+
+                    </div>
+                    <InputFile @key=@(inputFileId) OnChange="(e => browserFile = e.File)" accept=".doc,.docx, .pdf, .ppt, .pptx" class="file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"></InputFile>
+                    @if (browserFile != null) {
+                        <button @onclick="UploadFile" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 ml-4">Upload</button>
+                    }
+                </div>
+            </div>
+        }
+
+        @* New Combined Documents Table *@
+        <div class="rounded-lg bg-white overflow-hidden shadow lg:col-span-4">
+            <div class="p-4 sm:p-6 space-y-4">
+                <div class="text-lg leading-6 font-medium text-gray-900">Documents</div>
+                @* Documents Table *@
+                <div class="flex flex-col">
+                    <div class="overflow-x-auto border border-gray-300 rounded-md">
+                        <div class="inline-block min-w-full align-middle">
+                            <div class="overflow-hidden">
+                                <table class="min-w-full divide-y divide-gray-300">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Document Name</th>
+                                            <th scope="col" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Document Type</th>
+                                            <th scope="col" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Uploaded By</th>
+                                            <th scope="col" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Uploaded On</th>
+                                            <th scope="col" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Signature</th>
+                                            <th scope="col" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Status</th>
+                                            <th scope="col" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Visibility</th>
+                                            @if (IsPublicView == false) {
+                                                <th scope="col" class="py-3 px-3 text-right text-sm font-semibold text-gray-900 whitespace-nowrap">Actions</th>
+                                            }
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200 bg-white">
+                                        <PagedList ListQuery="@documents" ItemsPerPage=5>
+                                            <ItemDisplay>
+                                                <tr>
+                                                    <td class="px-3 py-3 text-sm text-gray-500 max-w-xs truncate">
+                                                        <a @onclick=@(() => navigationManager.NavigateTo($"/document/{context.Id}")) class="font-medium text-emerald-600 hover:text-emerald-800" title="@context.Name">@context.Name</a>
+                                                    </td>
+                                                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@context.Type</td>
+                                                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@context.CreatedByFullName</td>
+                                                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@context.CreatedDateTimeUTC.ToUserTimeZone(user)</td>
+                                                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@(context.IsSignature == true ? "Yes" : "No")</td>
+                                                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@context.Status</td>
+                                                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@context.PublicDocumentViewSettings.ToString()</td>
+                                                    @if (IsPublicView == false)
+                                                    {
+                                                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 text-right text-sm font-medium space-x-3">
+                                                        @if (context.IsSignature != true && context.CreatedBy == user.Email)
+                                                        {
+                                                            <button @onclick="@(() => OnEditClick(context, true))" class="text-emerald-600 hover:text-emerald-800">Edit</button>
+                                                        }
+                                                        @if (context.IsSignature == true && context.Status != "Completed" && context.CreatedBy == user.Email)
+                                                        {
+                                                            <button @onclick="@(() => OnRevokeClick(context, true))" class="text-red-500 hover:text-red-700">Revoke</button>
+                                                        }
+                                                        else
+                                                        {
+                                                            @if (context.CreatedBy == user.Email) {
+                                                                <button @onclick="@(() => OnDeleteClick(context, true))" class="text-red-500 hover:text-red-700">Delete</button>
+
+                                                            }
+                                                        }
+                                                    </td>
+                                                    }
+                                                </tr>
+                                            </ItemDisplay>
+                                        </PagedList>
+
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Edit Document Modal *@
+    <SfDialog Target="#target" Height="auto" Width="500" ShowCloseIcon="true" Header="Edit" @bind-Visible="EditVisibility" AllowPrerender="true" IsModal="true">
+        <DialogTemplates>
+            <Content>
+                <div class="space-y-4">
+                    @* Edit Document Name *@
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700">Edit Document Name</label>
+                        <div class="mt-1">
+                            <input @bind="documentToEdit.Name" type="text" name="fname" id="fname" class="shadow-sm focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:text-sm border-gray-300 rounded-md" placeholder="@documentToEdit.Name">
+                        </div>
+                    </div>
+                    @* Edit Document Type *@
+                    <div>
+                        <label for="document-type" class="block text-sm font-medium text-gray-700">Document Type</label>
+                        <InputSelect @bind-Value="@documentToEdit.Type" @onchange="@(e => CustomValueChange(e, DocumentTypes, documentToEdit, "Type"))" id="document-type" name="document-type" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                            <option selected></option>
+                            @foreach (var documentType in DocumentTypes)
+                            {
+                                <option>@documentType</option>
+                            }
+                            @if (!DocumentTypes.Contains(documentToEdit.Type) && !string.IsNullOrEmpty(documentToEdit.Type))
+                            {
+                                <option>@documentToEdit.Type</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    @* Edit Document Permissions *@
+                    <div>
+                        <label class="text-sm font-medium text-gray-700">Document Permissions</label>
+                        <fieldset class="mt-3">
+                            <legend class="sr-only">Document Permissions</legend>
+                            <div>
+                                <EditForm Model="@documentToEdit" class="space-y-3">
+                                    <InputRadioGroup Name="document-permissions-edit" @bind-Value="documentToEdit.PublicDocumentViewSettings">
+                                        @if (dealParticipants.Where(x => x.DealPermissions.Contains("Deal.Admin")).Select(x => x.EmailAddress).Contains(user.Email))
+                                        {
+                                           <div class="flex items-center">
+                                            <InputRadio Value="PublicDocumentViewSettings.Public" id="public-edit" name="document-permissions-edit" type="radio" checked="checked" class="focus:ring-emerald-500 h-4 w-4 text-emerald-600 border-gray-300" />
+                                            <label for="public-edit" class="ml-3 block text-sm font-medium text-gray-700">Public</label>
+                                        </div> 
+                                        }
+                                        <div class="flex items-center">
+                                            <InputRadio Value="PublicDocumentViewSettings.Participants" id="participants-edit" name="document-permissions-edit" type="radio" class="focus:ring-emerald-500 h-4 w-4 text-emerald-600 border-gray-300" />
+                                            <label for="participants-edit" class="ml-3 block text-sm font-medium text-gray-700">Deal Participants Only</label>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <InputRadio Value="PublicDocumentViewSettings.Private" id="private-edit" name="document-permissions-edit" type="radio" class="focus:ring-emerald-500 h-4 w-4 text-emerald-600 border-gray-300" />
+                                            <label for="private-edit" class="ml-3 block text-sm font-medium text-gray-700">Private (Only Me)</label>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <InputRadio Value="PublicDocumentViewSettings.Custom" id="custom-edit" name="document-permissions-edit" type="radio" class="focus:ring-emerald-500 h-4 w-4 text-emerald-600 border-gray-300" />
+                                            <label for="custom-edit" class="ml-3 block text-sm font-medium text-gray-700">Select Participants</label>
+                                        </div>
+                                    </InputRadioGroup>
+                                </EditForm>
+                            </div>
+
+                        </fieldset>
+                        @* Show this div if Select Participants is checked *@
+                        @if (documentToEdit.PublicDocumentViewSettings == PublicDocumentViewSettings.Custom)
+                        {
+                            <div class="col-span-6 sm:col-span-2 mt-3">
+                                <div class="text-sm font-medium text-gray-700 mb-1">Select Participants</div>
+                                <SfMultiSelect @bind-Value="documentToEdit.UserPermissions" Enabled="@(documentToEdit.PublicDocumentViewSettings == PublicDocumentViewSettings.Custom)" TValue="List<string>" TItem="DealParticipant" AllowFiltering="true" Placeholder="Select Specific Deal Participants" Mode="@VisualMode.CheckBox" DataSource="@dealParticipants.Where(x => x.EmailAddress != documentToEdit.CreatedBy)" ShowDropDownIcon="true" FilterBarPlaceholder="Search Deal Participants" PopupHeight="350px">
+                                    <MultiSelectTemplates TItem="DealParticipant">
+                                        <ItemTemplate>
+                                            <span class='name'>@((context as DealParticipant).EmailAddress)</span>
+                                        </ItemTemplate>
+                                    </MultiSelectTemplates>
+                                    <MultiSelectFieldSettings Text="EmailAddress" Value="EmailAddress"></MultiSelectFieldSettings>
+                                </SfMultiSelect>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </Content>
+            <FooterTemplate>
+                <button @onclick="@(() => OnEditClick(documentToEdit))" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600">Save</button>
+            </FooterTemplate>
+        </DialogTemplates>
+    </SfDialog>
+
+    @* Delete Document Modal *@
+    <SfDialog Target="#target" Height="auto" Width="500" ShowCloseIcon="true" Header="Delete" @bind-Visible="DeleteVisibility" AllowPrerender="true" IsModal="true">
+        <DialogTemplates>
+            <Content>
+                <div class="flex items-start justify-start space-x-3">
+                    <div class="text-red-500 text-lg leading-none"><i class="fa-solid fa-circle-exclamation"></i></div>
+                    <div class="text-gray-500 text-sm space-y-2">
+                        <div>Are you sure you want to permanently delete this document?</div>
+                        <div class="font-bold max-w-xs truncate" title="@($"{documentToDelete?.Name}")">@($"{documentToDelete?.Name}")</div>
+                        <div>This action cannot be undone.</div>
+                    </div>
+                </div>
+            </Content>
+            <FooterTemplate>
+                <button @onclick="@(() => OnDeleteClick(documentToDelete))" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">Delete</button>
+            </FooterTemplate>
+        </DialogTemplates>
+    </SfDialog>
+
+    @* Revoke Document Modal *@
+    <SfDialog Target="#target" Height="auto" Width="500" ShowCloseIcon="true" Header="Delete" @bind-Visible="RevokeVisibility" AllowPrerender="true" IsModal="true">
+        <DialogTemplates>
+            <Content>
+                <div class="flex items-center justify-start space-x-3">
+                    <div class="text-red-500 text-lg"><i class="fa-solid fa-circle-exclamation"></i></div>
+                    <div class="text-gray-500 text-sm">Are you sure you want to permanently revoke the @($"{documentToRevoke?.Name}") document? This action cannot be undone.</div>
+                </div>
+            </Content>
+            <FooterTemplate>
+                <button @onclick="@(() => OnRevokeClick(documentToRevoke))" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">Revoke</button>
+            </FooterTemplate>
+        </DialogTemplates>
+    </SfDialog>
+}

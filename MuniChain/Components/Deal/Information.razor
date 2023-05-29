@@ -1,0 +1,994 @@
+@inject IDealService dealService
+@inject IDealParticipantService dealParticipantService
+@inject IDocumentService documentService
+@inject INotificationService notificationService
+@inject IEmailService _emailService
+@inject IFirmsService firmsService
+@inject IToastService toastService
+@inject IJSRuntime JsRuntime
+<NavigationLock OnBeforeInternalNavigation="OnBeforeInternalNavigation" />
+
+<SfDialog Target="#target" Width="500px" AllowPrerender="false" IsModal="true" ShowCloseIcon="true" @bind-Visible="ConfirmDialogVisible">
+    <DialogTemplates>
+        <Header>Publish Deal</Header>
+        <Content>
+            <p class="text-gray-700 text-sm">Publishing this deal will list it publicly on Munichain. Tabs marked Private will not be visible to the public and are only accessible to deal participants with permission.</p>
+            @if (dealInformation.Series is not null && dealInformation.Series.Any())
+            {
+                <div class="mt-3 pt-3 border-t">
+                    <div class="block text-sm font-medium text-gray-700 mb-2">Select Series to Publish</div>
+                    <div class="space-y-2">
+                        @foreach (var item in dealInformation.Series.Where(x => !string.IsNullOrEmpty(x.Name)).OrderBy(x => x.CreatedDateUTC))
+                        {
+                            <div class="bg-gray-50 rounded-lg space-y-2 divide-y p-3">
+                                <div>
+                                    <SfCheckBox @bind-Checked="@item.IsPublished"></SfCheckBox>
+                                    <span>@item.Name</span>
+                                </div>
+                                @if (item.Maturities != null && item.Maturities.Any() && item.IsPublished)
+                                {
+                                    <div class="pl-4 pt-2">
+                                        <SfCheckBox @bind-Checked="@item.IsPublishedMaturities"></SfCheckBox>
+                                        <span>Maturities</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton IsPrimary="true" Content="Publish Deal" OnClick="(() => Publish(true, true))" />
+    </DialogButtons>
+</SfDialog>
+<SfDialog Target="#target" Height="auto" Width="500" ShowCloseIcon="true" Header="Validation Errors" @bind-Visible="@ValidationErrorPopup" AllowPrerender="true" IsModal="true">
+    <DialogEvents OnOverlayModalClick="@(() => this.ValidationErrorPopup = false)"></DialogEvents>
+    <DialogTemplates>
+        <Content>
+            <div class="space-y-3">
+                @foreach (var error in dealValidationErrors)
+                {
+                    <div class="flex items-center justify-start space-x-3">
+                        <div class="text-red-500 text-lg">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                        </div>
+                        <p class="text-red-500 text-sm">@error</p>
+                    </div>
+                }
+            </div>
+        </Content>
+    </DialogTemplates>
+</SfDialog>
+<SfDialog Target="#target" Height="auto" Width="500" ShowCloseIcon="true" Header="Add Call" @bind-Visible="@AddCallPopup" AllowPrerender="true" IsModal="true">
+    <DialogEvents OnOverlayModalClick="@(() => this.AddCallPopup = false)"></DialogEvents>
+    <DialogTemplates>
+        <Content>
+            <div class="flex items-center justify-start space-x-3">
+                <InputDate @bind-Value="CallDate" TValue="DateTime?" Placeholder='Choose a Date' class="max-w-lg block w-full shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm border-gray-300 rounded-md"></InputDate>
+                <SfDropDownList TValue="string" TItem="string" DataSource="@CallOptionEnumValues" @bind-Value="CallOption"></SfDropDownList>
+               @*  Call Price Spot *@
+            </div>
+        </Content>
+        <FooterTemplate>
+            <button id="sendButton" @onclick="@AddCall" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-500 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">Add Call</button>
+        </FooterTemplate>
+    </DialogTemplates>
+</SfDialog>
+<SfDialog Target="#target" Height="500px" Width="80%" ShowCloseIcon="true" Header="Edit Term" @bind-Visible="@EditTermPopup" AllowPrerender="true" IsModal="true">
+    <DialogEvents OnOverlayModalClick="@(() => this.EditTermPopup = false)"></DialogEvents>
+    <DialogTemplates>
+        <Content>
+            @foreach(var maturity in editMaturitiesInTerm.OrderBy(x => x.MaturityDateUTC))
+            {
+                var isLastMaturity = editMaturitiesInTerm.Last().Id == maturity.Id;
+
+                <div class="grid grid-cols-12 gap-3 flex-1">
+                    <div class="col-span-12 sm:col-span-2">
+                        <label for="maturity-date" class="block text-sm font-medium text-gray-700">Maturity Date</label>
+                        <div class="mt-1 sm:col-span-2">
+                            <div class="max-w-lg flex rounded-md shadow-sm">
+                                @if (isLastMaturity) {
+                                    <InputDate @bind-Value="maturity.MaturityDateUTC" TValue="DateTime?" Placeholder='Choose a Date' class="max-w-lg block w-full shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm border-gray-300 rounded-md"></InputDate>
+
+                                }
+                                else {
+                                    <span>@(maturity.MaturityDateUTC.HasValue ? maturity.MaturityDateUTC.Value.ToShortDateString() : "")</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-span-12 sm:col-span-2">
+                        <label for="par" class="block text-sm font-medium text-gray-700">Par</label>
+                        <div class="mt-1 sm:col-span-2">
+                            <div class="max-w-lg flex rounded-md shadow-sm currency-field">
+                                <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                                        $
+                                    </span>
+                                    <InputText type="text" Value="@maturity.ParAutoFill" ValueExpression="@(() => maturity.ParAutoFill)" ValueChanged="@(e => AutoFill(e, dealInformation.Series.FirstOrDefault(x => x.Id == maturity.SeriesId), maturity, "par"))" class="focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:text-sm border-gray-300 rounded-r-md">
+                                    </InputText>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-span-12 sm:col-span-2">
+                        <label for="coupon" class="block text-sm font-medium text-gray-700">Coupon</label>
+                        <div class="mt-1 sm:col-span-2">
+                            <div class="max-w-lg flex rounded-md shadow-sm percent-field">
+                                @if (isLastMaturity) {
+                                    <InputText type="text" Value="@maturity.CouponAutoFill" ValueExpression="@(() => maturity.CouponAutoFill)" ValueChanged="@(e => AutoFill(e, dealInformation.Series.FirstOrDefault(x => x.Id == maturity.SeriesId), maturity, "coupon"))" class="flex-1 block w-full focus:ring-emerald-500 focus:border-emerald-500 min-w-0 rounded-none rounded-l-md sm:text-sm border-gray-300">
+                                    </InputText>
+                                    <span class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                                        %
+                                    </span>
+                                }
+                                else {
+                                    <span>@maturity.CouponAutoFill</span>
+                                }
+                                
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-span-12 sm:col-span-2">
+                        <label for="coupon" class="block text-sm font-medium text-gray-700">Yield</label>
+                        <div class="mt-1 sm:col-span-2">
+                            <div class="max-w-lg flex rounded-md shadow-sm percent-field">
+                                @if (isLastMaturity) {
+                                    <InputText type="text" Value="@maturity.YieldAutoFill" ValueExpression="@(() => maturity.YieldAutoFill)" ValueChanged="@(e => AutoFill(e, dealInformation.Series.FirstOrDefault(x => x.Id == maturity.SeriesId), maturity, "yield"))" class="flex-1 block w-full focus:ring-emerald-500 focus:border-emerald-500 min-w-0 rounded-none rounded-l-md sm:text-sm border-gray-300">
+                                </InputText>
+                                <span class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                                    %
+                                </span>
+                                }
+                                else {
+                                    <span>@maturity.YieldAutoFill</span>
+                                }
+                                
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-span-12 sm:col-span-2">
+                        <label for="dollarPrice" class="block text-sm font-medium text-gray-700">Dollar Price</label>
+                        <div class="mt-1 relative rounded-md shadow-sm">
+                            @if (isLastMaturity) {
+                            <InputNumber @bind-Value="maturity.Price" TValue="decimal?" class="focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:text-sm border-gray-300 rounded-md"></InputNumber>
+
+                                }
+                                else {
+                                <span>@maturity.Price</span>
+                                }
+                        </div>
+                    </div>
+                    <div class="col-span-12 sm:col-span-2">
+                        <label for="cusip9" class="block text-sm font-medium text-gray-700">CUSIP9</label>
+                        <div class="mt-1 relative rounded-md shadow-sm">
+                            @if (isLastMaturity) {
+                            <InputText type="number" @bind-Value="maturity.CUSIP9LastThree" class="flex-1 block w-full focus:ring-emerald-500 focus:border-emerald-500 min-w-0 rounded-md sm:text-sm border-gray-300"></InputText>
+
+                                }
+                                else {
+                                <span>@maturity.CUSIP9LastThree</span>
+                                }
+                        </div>
+                    </div>
+                </div>
+            }
+        </Content>
+    </DialogTemplates>
+</SfDialog>
+<SfDialog Width="300px" ShowCloseIcon="true" IsModal="true" @bind-Visible="@IsCustomValueVisible">
+    <DialogTemplates>
+        <Header>Other</Header>
+        <Content>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Please enter a custom value:</label>
+                <SfTextBox @ref="CustomValue" Placeholder='Custom'></SfTextBox>
+            </div>
+        </Content>
+    </DialogTemplates>
+    <DialogButtons>
+        <DialogButton Content="OK" IsPrimary="true" OnClick="@CloseCustomInput" />
+    </DialogButtons>
+</SfDialog>
+<ConcurrencyDisplay LstConcurrencyItem="@LstConcurrencyItem" IsShowConcurrencyItem="@IsShowConcurrencyItem" UpdatedObj="@dealInformation" MergeSubmit="@Submit">
+</ConcurrencyDisplay>
+
+@if (DealView.IsPublicView || !DealView.CurrentUserPermissions.CanWriteDeal() || (DealView.DealGranted.IsLocked == true && !DealView.CurrentUserPermissions.IsOnlyDealAdmin()))
+{
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:px-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">
+                Deal Overview
+            </h3>
+        </div>
+        <div class="border-t border-gray-200 p-4 sm:p-6">
+            <div class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-4">
+                <PublicDealAttribute PropertyName="Offering Type">@dealInformation.OfferingType</PublicDealAttribute>
+                <PublicDealAttribute PropertyName="Issuer">@dealInformation.Issuer</PublicDealAttribute>
+                <PublicDealAttribute PropertyName="Issue Size">@dealInformation.FormattedCurrencySize</PublicDealAttribute>
+                <PublicDealAttribute PropertyName="Number of Series">@dealInformation.Series.Count()</PublicDealAttribute>
+                <PublicDealAttribute PropertyName="Issuer URL"><a href="@dealInformation.IssuerURL" class="hover:underline text-emerald-600" target="_blank" rel="noopener">@dealInformation.IssuerURL</a></PublicDealAttribute>
+                <PublicDealAttribute PropertyName="Issuer State">@dealInformation.State</PublicDealAttribute>
+                <PublicDealAttribute PropertyName="Sale Date">
+                    @try
+                    {
+                        if (@dealInformation?.SaleDateUTC != null)
+                        {
+                            @dealInformation?.SaleDateUTC.Value.Date.ToShortDateString()
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        <span>None</span>
+                    }
+                </PublicDealAttribute>
+                <PublicDealAttribute PropertyName="CUSIP6">@dealInformation.CUSIP6</PublicDealAttribute>
+                <div class="sm:col-span-4">
+                    <div class="text-sm font-medium text-gray-500">
+                        Issue Description
+                    </div>
+                    <div class="mt-1 text-sm text-gray-900 whitespace-pre-line">
+                        @dealInformation?.Description
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    var orderedSeries = dealInformation?.Series.OrderBy(x => x.CreatedDateUTC).ToList();
+    @foreach (var series in orderedSeries)
+    {
+        if (series.IsPublished)
+        {
+            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div class="px-4 py-5 sm:px-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">
+                        Series: @series.Name
+                    </h3>
+                </div>
+                <div class="border-t border-gray-200 p-4 sm:p-6 space-y-8">
+                    <!-- Series Information -->
+                    <div class="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-4">
+                        <PublicDealAttribute PropertyName="Series Size">@series.Size</PublicDealAttribute>
+                        <PublicDealAttribute PropertyName="Purpose">@series.Purpose</PublicDealAttribute>
+                        <PublicDealAttribute PropertyName="Source of Repayment">@series.SourceOfRepayment</PublicDealAttribute>
+                        @if (dealInformation.OfferingType == "Competitive")
+                        {
+                            <PublicDealAttribute PropertyName="Sale Date/Time">@series.SaleTimeUTC @series.TimeZone</PublicDealAttribute>
+                        }
+                        <PublicDealAttribute PropertyName="Dated Date">@series.DatedDateUTC?.ToString("MM/dd/yyyy")</PublicDealAttribute>
+                        <PublicDealAttribute PropertyName="Tax Status">@series.TaxStatus</PublicDealAttribute>
+                        <PublicDealAttribute PropertyName="Security Type">@series.SecurityType</PublicDealAttribute>
+                        <PublicDealAttribute PropertyName="Lead Manager">@series.LeadManager</PublicDealAttribute>
+                        <PublicDealAttribute PropertyName="Bank Qualified">@series.IsBankQualified</PublicDealAttribute>
+                        <PublicDealAttribute PropertyName="ESG Certified Type">@series.ESGCertifiedType</PublicDealAttribute>
+                        <PublicDealAttribute PropertyName="ESG Verifier">@series.ESGVerifier</PublicDealAttribute>
+                        <PublicDealAttribute PropertyName="Moody's Rating">@series.MoodysRating</PublicDealAttribute>
+                        <PublicDealAttribute PropertyName="S&P Rating">@series.SPRating</PublicDealAttribute>
+                        <PublicDealAttribute PropertyName="Fitch Rating">@series.FitchRating</PublicDealAttribute>
+                        <PublicDealAttribute PropertyName="Kroll Rating">@series.KrollRating</PublicDealAttribute>
+                        <div class="sm:col-span-4">
+                            <div class="text-sm font-medium text-gray-500">
+                                Series Description
+                            </div>
+                            <div class="mt-1 text-sm text-gray-900">
+                                @series.Description
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Maturity Information -->
+                    @if (series.Maturities != null && series.Maturities.Any())
+                    {
+                        <div>
+                            <div class="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                                <div class="inline-block min-w-full py-2 align-middle px-4 sm:px-6 lg:px-8">
+                                    <div class="overflow-hidden ring-1 ring-gray-300 rounded-md">
+                                        <table class="min-w-full divide-y divide-gray-300">
+                                            <thead class="bg-gray-50">
+                                                <tr>
+                                                    <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Maturity Date</th>
+                                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Par</th>
+                                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Coupon</th>
+                                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Yield</th>
+                                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">CUSIP9</th>
+                                                    <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Dollar Price</th>
+                                                </tr>
+                                            </thead>
+                                            @if (series.Maturities != null && series.Maturities.Any())
+                                            {
+                                                <tbody class="divide-y divide-gray-200 bg-white">
+                                                    @foreach (var maturity in series.Maturities.OrderBy(x => x.MaturityDateUTC))
+                                                    {
+                                                        <tr>
+                                                            <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">@maturity.MaturityDateUTC?.ToString("MM/dd/yyyy")</td>
+                                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">@string.Format("{0:C2}", maturity.Par)</td>
+                                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">@maturity.Coupon %</td>
+                                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">@maturity.YieldDenom @maturity.Yield</td>
+                                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">@string.Concat(dealInformation.CUSIP6, @maturity.CUSIP9LastThree)</td>
+                                                            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">@maturity.Price</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            }
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div class="px-4 py-5 sm:px-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">
+                        Unpublished Series @(orderedSeries.IndexOf(series) + 1)
+                    </h3>
+                </div>
+            </div>
+        }
+    }
+}
+else
+{
+    <EditForm @ref="dealForm" Model="@dealInformation" OnValidSubmit="@(e=>Submit(false))" OnInvalidSubmit="@(() => SaveError = true)">
+        <DataAnnotationsValidator />
+        @{
+            var validationResults = dealForm.EditContext.GetValidationMessages();
+        }
+        <SfDialog Target="#target" Height="auto" Width="500" ShowCloseIcon="true" Header="Errors Saving" @bind-Visible="@SaveError" AllowPrerender="true" IsModal="true">
+            <ChildContent>
+                <div class="space-y-3">
+                    @foreach (var error in validationResults)
+                    {
+                        <div class="flex items-center justify-start space-x-3">
+                            <div class="text-red-500 text-lg">
+                                <i class="fa-solid fa-circle-exclamation"></i>
+                            </div>
+                            <p class="text-red-500 text-sm">@error</p>
+                        </div>
+                    }
+                </div>
+            </ChildContent>
+        </SfDialog>
+        <div class="mt-10 sm:mt-0">
+            <div class="md:grid md:grid-cols-3 md:gap-6">
+                <div class="md:col-span-3 flex justify-between items-center">
+                    <div class="px-4 sm:px-0">
+                        <h3 class="text-lg font-medium leading-6 text-gray-900">Overview</h3>
+                        <p class="mt-1 text-sm text-gray-600">Fill out this section with the high-level public deal information.</p>
+                    </div>
+                    <div class="px-4 sm:px-0 flex items-center justify-end space-x-2">
+                        @* Prevent enter on submit with disabled input button *@
+                        <button type="submit" disabled style="display: none" aria-hidden="true"></button>
+                        @if (dealInformation.IsLocked == true && dealInformation.CreatedBy != user.Id)
+                        {
+                        }
+                        else
+                        {
+                            <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-emerald-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 focus:ring-emerald-500 space-x-2">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                                <span>Save Deal</span>
+                            </button>
+                        }
+                        @if (DealView.CurrentUserPermissions.IsOnlyDealAdmin())
+                        {
+                            var canPublish = !dealForm.EditContext.IsModified();
+                            var title = !canPublish ? "Please save before publishing" : "";
+                            var canPublishClass = canPublish ? "inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 space-x-2"
+                            : "inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 space-x-2";
+                            <button type="button" @onclick="@(() => Publish(false, canPublish))" title="@title" class="@canPublishClass">
+                                <i class="fa-solid fa-earth-americas"></i>
+                                <span>Publish</span>
+                            </button>
+                        }
+                    </div>
+                </div>
+                <div class="mt-5 md:mt-0 md:col-span-3">
+                    <div class="shadow overflow-hidden sm:rounded-md">
+                        <div class="px-4 py-5 bg-white sm:p-6 space-y-6">
+                            <div class="grid grid-cols-12 gap-6">
+                                <div class="col-span-12 sm:col-span-6">
+                                    <label for="issuer" class="block text-sm font-medium text-gray-700">Issuer Name</label>
+                                    <div class="mt-1 sm:col-span-2">
+                                        <div class="col-span-6 sm:col-span-3 flex items-center space-x-3">
+                                            @if (EditIssuer)
+                                            {
+                                                <IssuerSelect @ref="issuerSelectRef" createDeal="dealInformation" user="@user"></IssuerSelect>
+                                                <button type="button" @onclick="EditIssuerClicked" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">Save</button>
+                                            }
+                                            else
+                                            {
+                                                <span>@dealInformation.Issuer</span>
+                                                <button type="button" @onclick="EditIssuerClicked" class="inline-flex justify-center py-2 px-3 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"><i class="fa-solid fa-pencil"></i></button>
+                                            }
+                                            <ValidationMessage For="@(() => dealInformation.Issuer)" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-span-12 sm:col-span-3">
+                                    <label for="link" class="block text-sm font-medium text-gray-700">Issuer Link</label>
+                                    <div class="mt-1 sm:col-span-2">
+                                        <div class="col-span-6 sm:col-span-3">
+                                            <InputText @bind-Value="dealInformation.IssuerURL" type="text" name="link" id="link" placeholder="Enter a url" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                        </div>
+                                        <ValidationMessage For="@(() => dealInformation.IssuerURL)" />
+                                    </div>
+                                </div>
+                                <div class="col-span-12 sm:col-span-3">
+                                    <label for="offering-type" class="block text-sm font-medium text-gray-700">Offering Type</label>
+                                    <InputSelect @bind-Value="dealInformation.OfferingType" id="offering-type" name="offering-type" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                        <option selected></option>
+                                        @foreach (var option in OfferingTypes)
+                                        {
+                                            <option>@option</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+
+                                <div class="col-span-12 sm:col-span-12">
+                                    <label for="issue-description" class="block text-sm font-medium text-gray-700">Issue Description</label>
+                                    <InputTextArea @bind-Value="dealInformation.Description" id="issue-description" name="issue-description" rows="3" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></InputTextArea>
+                                </div>
+
+                                <div class="col-span-12 sm:col-span-3">
+                                    <label for="size" class="block text-sm font-medium text-gray-700">Issue Size</label>
+                                    <div class="mt-1 sm:col-span-2">
+                                        <div class="flex rounded-md shadow-sm currency-field">
+                                            <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                                                $
+                                            </span>
+                                            <SfNumericTextBox ID="numeric" @bind-Value="dealInformation.Size" Min=0 Max=10000000000 TValue="decimal?" Format="n2" ShowSpinButton=false class="flex-1 block w-full focus:ring-emerald-500 focus:border-emerald-500 min-w-0 rounded-none rounded-r-md sm:text-sm border-gray-300">
+                                                <NumericTextBoxEvents TValue="decimal?" Created='() => { onCreated("#numeric"); }'></NumericTextBoxEvents>
+                                            </SfNumericTextBox>
+                                        </div>
+                                        <ValidationMessage For="@(() => dealInformation.Size)" />
+                                    </div>
+                                </div>
+
+                                <div class="col-span-12 sm:col-span-3">
+                                    <label for="issuer-state" class="block text-sm font-medium text-gray-700">Issuer State</label>
+                                    <div class="mt-1 sm:col-span-2">
+                                        <div class="flex rounded-md shadow-sm">
+                                            <SfDropDownList TValue="States?" TItem="string" DataSource="@EnumValues" @bind-Value="dealInformation.State"></SfDropDownList>
+                                        </div>
+                                        <ValidationMessage For="@(() => dealInformation.State)" />
+                                    </div>
+                                </div>
+
+                                <div class="col-span-12 sm:col-span-3">
+                                    <label for="sale-date" class="block text-sm font-medium text-gray-700">Sale Date</label>
+                                    <div class="mt-1 sm:col-span-2">
+                                        <div class="flex rounded-md shadow-sm">
+                                            <InputDate @bind-Value="dealInformation.SaleDateUTC" TValue="DateTime?" Placeholder='Choose a Date' class="max-w-lg block w-full shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm border-gray-300 rounded-md"></InputDate>
+                                        </div>
+                                        <ValidationMessage For="@(() => dealInformation.SaleDateUTC)" />
+                                    </div>
+                                </div>
+
+                                <div class="col-span-12 sm:col-span-3">
+                                    <label for="CUSIP6" class="block text-sm font-medium text-gray-700">CUSIP6</label>
+                                    <InputText @bind-Value="dealInformation.CUSIP6" type="text" name="CUSIP6" id="CUSIP6" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    <ValidationMessage For="@(() => dealInformation.CUSIP6)" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hidden sm:block" aria-hidden="true">
+            <div class="py-5">
+                <div class="border-t border-gray-200"></div>
+            </div>
+        </div>
+
+        <!-- Series -->
+        <div class="mt-8 sm:mt-0">
+            <div class="md:grid md:grid-cols-3 md:gap-6">
+                @* <div class="md:col-span-3">
+            <div class="px-4 sm:px-0">
+            <h3 class="text-lg font-medium leading-6 text-gray-900">Series</h3>
+            <p class="mt-1 text-sm text-gray-600">Add series-level information including maturity range for each series.</p>
+            </div>
+            </div> *@
+                <div class="md:col-span-3 flex justify-between items-center">
+                    <div class="px-4 sm:px-0">
+                        <h3 class="text-lg font-medium leading-6 text-gray-900">Series</h3>
+                        <p class="mt-1 text-sm text-gray-600">Add series-level information including maturity range for each series.</p>
+                    </div>
+                    <div class="px-4 sm:px-0 flex items-center justify-end space-x-2">
+                        @* Prevent enter on submit with disabled input button *@
+                        <button type="submit" disabled style="display: none" aria-hidden="true"></button>
+                        @if (dealInformation.IsLocked == true && dealInformation.CreatedBy != user.Id)
+                        {
+                        }
+                        else
+                        {
+                            <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-emerald-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 focus:ring-emerald-500 space-x-2">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                                <span>Save Deal</span>
+                            </button>
+                        }
+                    </div>
+                </div>
+                <div class="mt-5 md:mt-0 md:col-span-3 space-y-5">
+                    <!-- Series Container -->
+                    @foreach (var series in dealInformation?.Series.OrderBy(x => x.CreatedDateUTC).ToList())
+                    {
+                        <div class="shadow overflow-hidden sm:rounded-md">
+                            <div class="px-4 py-5 bg-white sm:p-6">
+                                <div class="grid grid-cols-12 gap-6">
+                                    <div class="col-span-12 sm:col-span-9">
+                                        <label for="series-description" class="block text-sm font-medium text-gray-700">Series Name</label>
+                                        <InputText @bind-Value="series.Name" type="text" name="series-description" id="series-description" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-3">
+                                        <label for="series-size" class="block text-sm font-medium text-gray-700">Series Size</label>
+                                        <div class="mt-1 sm:col-span-2">
+                                            <div class="flex rounded-md shadow-sm currency-field">
+                                                <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                                                    $
+                                                </span>
+                                                <SfNumericTextBox @bind-Value="series.Size" TValue="decimal?" Min=0 Max=10000000000 Format="n2" Id="numeric" ShowSpinButton=false class="flex-1 block w-full focus:ring-emerald-500 focus:border-emerald-500 min-w-0 rounded-none rounded-r-md sm:text-sm border-gray-300">
+                                                    <NumericTextBoxEvents TValue="decimal?" Created='() => { onCreated("#numeric"); }'></NumericTextBoxEvents>
+                                                </SfNumericTextBox>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-12">
+                                        <label for="series-description" class="block text-sm font-medium text-gray-700">Series Description</label>
+                                        <InputTextArea @bind-Value="series.Description" type="text" name="series-description" id="series-description" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-3">
+                                        <label for="purpose" class="block text-sm font-medium text-gray-700">Purpose</label>
+                                        <InputSelect @bind-Value="@series.Purpose" @onchange="@(e => CustomValueChange(e, SeriesPurpose, series, "Purpose"))" id="purpose" name="purpose" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                            <option selected></option>
+                                            @foreach (var option in SeriesPurpose)
+                                            {
+                                                <option>@option</option>
+                                            }
+                                            @if (!SeriesPurpose.Contains(series.Purpose) && !string.IsNullOrEmpty(series.Purpose))
+                                            {
+                                                <option>@series.Purpose</option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-3">
+                                        <label for="source-repayment" class="block text-sm font-medium text-gray-700">Source of Repayment</label>
+                                        <InputSelect @bind-Value="series.SourceOfRepayment" id="source-repayment" name="source-repayment" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                            <option selected></option>
+                                            @foreach (var option in SeriesSourceOfRepayment)
+                                            {
+                                                <option>@option</option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-3">
+                                        <label for="tax-status" class="block text-sm font-medium text-gray-700">Tax Status</label>
+                                        <InputSelect @bind-Value="series.TaxStatus" id="tax-status" name="tax-status" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                            <option selected value=""></option>
+                                            <option>Taxable</option>
+                                            <option>Tax-Exempt</option>
+                                            <option>AMT</option>
+                                            <option>Corporate</option>
+                                        </InputSelect>
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-3">
+                                        <label for="security-type" class="block text-sm font-medium text-gray-700">Security Type</label>
+                                        <InputSelect @bind-Value="series.SecurityType" id="security-type" name="security-type" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                            <option selected value=""></option>
+                                            <option>Bond</option>
+                                            <option>Note</option>
+                                            <option>Put</option>
+                                            <option>Variable Rate</option>
+                                            <option>FRN</option>
+                                        </InputSelect>
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-3">
+                                        <label for="dated-date" class="block text-sm font-medium text-gray-700">Dated Date</label>
+                                        <div class="mt-1 sm:col-span-2">
+                                            <div class="max-w-lg flex rounded-md shadow-sm">
+                                                <InputDate @bind-Value="series.DatedDateUTC" TValue="DateTime?" Placeholder='Choose a Date' class="max-w-lg block w-full shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm border-gray-300 rounded-md"></InputDate>
+                                            </div>
+                                            <ValidationMessage For="@(() => series.DatedDateUTC)" />
+                                        </div>
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-3">
+                                        <label for="dated-date" class="block text-sm font-medium text-gray-700">Delivery Date</label>
+                                        <div class="mt-1 sm:col-span-2">
+                                            <div class="max-w-lg flex rounded-md shadow-sm">
+                                                <InputDate @bind-Value="series.DeliveryDateUTC" TValue="DateTime?" Placeholder='Choose a Date' class="max-w-lg block w-full shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm border-gray-300 rounded-md"></InputDate>
+                                            </div>
+                                            <ValidationMessage For="@(() => series.DeliveryDateUTC)" />
+                                        </div>
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-3">
+                                        <label for="dated-date" class="block text-sm font-medium text-gray-700">Settlement Date</label>
+                                        <div class="mt-1 sm:col-span-2">
+                                            <div class="max-w-lg flex rounded-md shadow-sm">
+                                                <InputDate @bind-Value="series.SettlementDateUTC" TValue="DateTime?" Placeholder='Choose a Date' class="max-w-lg block w-full shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm border-gray-300 rounded-md"></InputDate>
+                                            </div>
+                                            <ValidationMessage For="@(() => series.SettlementDateUTC)" />
+                                        </div>
+                                    </div>
+                                    <div class="col-span-6 sm:col-span-3">
+                                        <label for="lead-manager" class="block text-sm font-medium text-gray-700">Lead Manager</label>
+                                        <InputText @bind-Value="series.LeadManager" type="text" name="lead-manager" id="lead-manager" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                        <ValidationMessage For="() => series.LeadManager" />
+                                    </div>
+                                    <div class="col-span-6 sm:col-span-3">
+                                        <label for="moodys" class="block text-sm font-medium text-gray-700">Moody's Rating</label>
+                                        <InputSelect @bind-Value="series.MoodysRating" id="moodys" name="moodys" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                            <option selected></option>
+                                            @if (series.SecurityType == "Note")
+                                            {
+                                                @foreach (var option in MoodysWithSecurityTypeNote)
+                                                {
+                                                    <option>@option</option>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                @foreach (var option in MoodysWithoutSecurityTypeNote)
+                                                {
+                                                    <option>@option</option>
+                                                }
+
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                    <div class="col-span-6 sm:col-span-3">
+                                        <label for="sp" class="block text-sm font-medium text-gray-700">S&P Rating</label>
+                                        <InputSelect @bind-Value="series.SPRating" id="sp" name="sp" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                            <option selected></option>
+                                            @if (series.SecurityType == "Note")
+                                            {
+                                                @foreach (var option in SPWithSecurityTypeNote)
+                                                {
+                                                    <option>@option</option>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                @foreach (var option in SPWithoutSecurityTypeNote)
+                                                {
+                                                    <option>@option</option>
+                                                }
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                    <div class="col-span-6 sm:col-span-3">
+                                        <label for="fitch" class="block text-sm font-medium text-gray-700">Fitch Rating</label>
+                                        <InputSelect @bind-Value="series.FitchRating" id="fitch" name="fitch" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                            <option selected></option>
+                                            @if (series.SecurityType == "Note")
+                                            {
+                                                @foreach (var option in FitchWithSecurityTypeNote)
+                                                {
+                                                    <option>@option</option>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                @foreach (var option in FitchWithoutSecurityTypeNote)
+                                                {
+                                                    <option>@option</option>
+                                                }
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                    <div class="col-span-6 sm:col-span-3">
+                                        <label for="kroll" class="block text-sm font-medium text-gray-700">Kroll Rating</label>
+                                        <InputSelect @bind-Value="series.KrollRating" id="kroll" name="kroll" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                            <option selected></option>
+                                            @if (series.SecurityType == "Note")
+                                            {
+                                                @foreach (var option in KrollWithSecurityTypeNote)
+                                                {
+                                                    <option>@option</option>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                @foreach (var option in KrollWithoutSecurityTypeNote)
+                                                {
+                                                    <option>@option</option>
+                                                }
+                                            }
+
+                                        </InputSelect>
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-3">
+                                        <label for="esg-type" class="block text-sm font-medium text-gray-700">ESG Certified Type</label>
+                                        <InputSelect @bind-Value="series.ESGCertifiedType" id="esg-type" name="esg-type" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                            <option selected></option>
+                                            <option>Green</option>
+                                            <option>Social</option>
+                                            <option>Climate</option>
+                                            <option>Sustainable</option>
+                                            <option>Blue</option>
+                                            <option>Transition</option>
+                                        </InputSelect>
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-3">
+                                        <label for="esg-verifier" class="block text-sm font-medium text-gray-700">ESG Verifier</label>
+                                        <InputSelect @bind-Value="@series.ESGVerifier" @onchange="@(e => CustomValueChange(e, ESGVerifierOptions, series, "ESGVerifier"))" id="esg-verifier" name="esg-verifier" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                            <option selected></option>
+                                            @foreach (var verifierOption in ESGVerifierOptions)
+                                            {
+                                                <option>@verifierOption</option>
+                                            }
+                                            @if (!ESGVerifierOptions.Contains(series.ESGVerifier) && !string.IsNullOrEmpty(series.ESGVerifier))
+                                            {
+                                                <option>@series.ESGVerifier</option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                    @if (dealInformation.OfferingType == "Competitive")
+                                    {
+                                        <div class="col-span-12 sm:col-span-3">
+                                            <label for="sale-time" class="block text-sm font-medium text-gray-700">Sale Time</label>
+                                            <div class="mt-1 sm:col-span-2">
+                                                <div class="flex rounded-md shadow-sm">
+                                                    <SfTimePicker Step="5" AllowEdit=false Min='@MinVal' Max='@MaxVal' @bind-Value="series.SaleTimeUTC" TValue="DateTime?" PlaceHolder="8:00 AM" class="max-w-lg block w-full shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm border-gray-300 rounded-md"></SfTimePicker>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        if (series.SaleTimeUTC != null)
+                                        {
+                                            <div class="col-span-12 sm:col-span-3">
+                                                <label for="time-zone" class="block text-sm font-medium text-gray-700">Time Zone</label>
+                                                <InputSelect @bind-Value="series.TimeZone" id="time-zone" name="time-zone" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                                    <option selected value=""></option>
+                                                    <option value="Eastern Standard Time">EST Eastern Standard Time</option>
+                                                    <option value="Central Standard Time">CST Central Standard Time</option>
+                                                    <option value="Mountain Standard Time">MST Mountain Standard Time</option>
+                                                    <option value="Pacific Standard Time">PST Pacific Standard Time</option>
+                                                </InputSelect>
+                                            </div>
+                                        }
+                                    }
+                                    <div class="col-span-12 sm:col-span-3">
+                                        <div class="block text-sm font-medium text-gray-700 mb-1">Bank Qualified</div>
+                                        <SfCheckBox @bind-Checked="series.IsBankQualified" Label="Yes"></SfCheckBox>
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-3">
+                                        <div class="block text-sm font-medium text-gray-700 mb-1">Extraordinary Redemption Provision</div>
+                                        <SfCheckBox @bind-Checked="series.IsERP" Label="Yes"></SfCheckBox>
+                                    </div>
+                                    <div class="col-span-12">
+                                        <div class="flex justify-start items-center mb-2 space-x-3">
+                                            <div class="block text-base font-bold text-gray-700">Maturities</div>
+                                            <ScaleWizard series="@series" UpdateGrid="RefreshGrid" dealInformation="@dealInformation" />
+                                        </div>
+                                        <SfToolbar class="rounded-md">
+                                            <ToolbarEvents Clicked="(e => OnClicked(e, series))"></ToolbarEvents>
+                                            <ToolbarItems>
+                                                <ToolbarItem Text="Add"></ToolbarItem>
+                                                <ToolbarItem Disabled="@(!series.Maturities.Any(x => x.IsChecked))" Text="Term"></ToolbarItem>
+                                                <ToolbarItem Disabled="@(!series.Maturities.Any(x => x.IsChecked))" Text="Add Call"></ToolbarItem>
+                                            </ToolbarItems>
+                                        </SfToolbar>
+                                        @if (series.Maturities != null && series.Maturities.Any())
+                                        {
+                                            <div class="col-span-12 divide-y">
+                                                @foreach (var termedMaturities in series.Maturities.TermMaturities())
+                                                {
+                                                    // Is NOT Termed
+                                                    @if (!termedMaturities.Value) {
+                                                        var maturity = termedMaturities.Key.First();
+                                                        var i = series.Maturities.IndexOf(maturity);
+                                                        string pName = "par" + i;
+                                                        string cName = "coupon" + i;
+                                                        string yName = "yield" + i;
+
+                                                        <div class="flex items-end p-4 space-x-4 bg-gray-50">
+                                                        <div class="grid grid-cols-12 gap-3 flex-1">
+                                                            <div class="col-span-6 sm:col-span-2">
+                                                                <div class="mt-1 sm:col-span-2">
+                                                                        <SfCheckBox  @bind-Checked="maturity.IsChecked"></SfCheckBox>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-span-12 sm:col-span-2">
+                                                                <label for="maturity-date" class="block text-sm font-medium text-gray-700">Maturity Date</label>
+                                                                <div class="mt-1 sm:col-span-2">
+                                                                    <div class="max-w-lg flex rounded-md shadow-sm">
+                                                                        <InputDate @bind-Value="maturity.MaturityDateUTC" TValue="DateTime?" Placeholder='Choose a Date' class="max-w-lg block w-full shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm border-gray-300 rounded-md"></InputDate>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-span-12 sm:col-span-2">
+                                                                <label for="par" class="block text-sm font-medium text-gray-700">Par</label>
+                                                                <div class="mt-1 sm:col-span-2">
+                                                                    <div class="max-w-lg flex rounded-md shadow-sm currency-field">
+                                                                        <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                                                                            $
+                                                                        </span>
+                                                                            <InputText type="text" Value="@maturity.ParAutoFill" ValueExpression="@(() => maturity.ParAutoFill)" ValueChanged="@(e => AutoFill(e, series, maturity, "par"))" class="focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:text-sm border-gray-300 rounded-r-md">
+                                                                        </InputText>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-span-12 sm:col-span-2">
+                                                                <label for="coupon" class="block text-sm font-medium text-gray-700">Coupon</label>
+                                                                <div class="mt-1 sm:col-span-2">
+                                                                    <div class="max-w-lg flex rounded-md shadow-sm percent-field">
+                                                                        <InputText type="text" Value="@maturity.CouponAutoFill" ValueExpression="@(() => maturity.CouponAutoFill)" ValueChanged="@(e => AutoFill(e, series, maturity, "coupon"))" class="flex-1 block w-full focus:ring-emerald-500 focus:border-emerald-500 min-w-0 rounded-none rounded-l-md sm:text-sm border-gray-300">
+                                                                        </InputText>
+                                                                        <span class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                                                                            %
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-span-12 sm:col-span-2">
+                                                                <label for="coupon" class="block text-sm font-medium text-gray-700">Yield</label>
+                                                                <div class="mt-1 sm:col-span-2">
+                                                                    <div class="max-w-lg flex rounded-md shadow-sm percent-field">
+                                                                        <InputText type="text" Value="@maturity.YieldAutoFill" ValueExpression="@(() => maturity.YieldAutoFill)" ValueChanged="@(e => AutoFill(e, series, maturity, "yield"))" class="flex-1 block w-full focus:ring-emerald-500 focus:border-emerald-500 min-w-0 rounded-none rounded-l-md sm:text-sm border-gray-300">
+                                                                        </InputText>
+                                                                        <span class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                                                                            %
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-span-12 sm:col-span-2">
+                                                                <label for="dollarPrice" class="block text-sm font-medium text-gray-700">Dollar Price</label>
+                                                                <div class="mt-1 relative rounded-md shadow-sm">
+                                                                    <InputNumber @bind-Value="maturity.Price" TValue="decimal?" class="focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:text-sm border-gray-300 rounded-md"></InputNumber>
+                                                                </div>
+                                                                    </div>
+                                                            <div class="col-span-12 sm:col-span-2">
+                                                                <label for="cusip9" class="block text-sm font-medium text-gray-700">CUSIP9</label>
+                                                                <div class="mt-1 relative rounded-md shadow-sm">
+                                                                    <InputText type="number" @bind-Value="maturity.CUSIP9LastThree" class="flex-1 block w-full focus:ring-emerald-500 focus:border-emerald-500 min-w-0 rounded-md sm:text-sm border-gray-300"></InputText>
+                                                                </div>
+                                                            </div>
+                                                            </div>
+                                                        @* Delete maturity date *@
+                                                        <button @onclick="() => series.Maturities.Remove(maturity)" type="button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 space-x-3 whitespace-nowrap">
+                                                            <span class="leading-5"><i class="fa-regular fa-trash-can"></i></span>
+                                                        </button>
+                                                    </div>
+                                                    }
+                                                    else {
+                                                        <div class="flex items-end p-4 space-x-4 bg-gray-50">
+                                                        <div class="grid grid-cols-12 gap-3 flex-1">
+                                                            <div class="col-span-12 sm:col-span-2">
+                                                                <div class="mt-1 sm:col-span-2">
+                                                                     <b>Term</b>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-span-12 sm:col-span-2">
+                                                                <label for="maturity-date" class="block text-sm font-medium text-gray-700">Maturity Date</label>
+                                                                <div class="mt-1 sm:col-span-2">
+                                                                    <div class="max-w-lg flex rounded-md shadow-sm">
+                                                                        <span>
+                                                                            @termedMaturities.Key.Last().MaturityDateUTC
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-span-12 sm:col-span-2">
+                                                                <label for="par" class="block text-sm font-medium text-gray-700">Par</label>
+                                                                <div class="mt-1 sm:col-span-2">
+                                                                    <div class="max-w-lg flex rounded-md shadow-sm currency-field">
+                                                                            <span>
+                                                                                @termedMaturities.Key.Sum(x => x.Par)
+                                                                            </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-span-12 sm:col-span-2">
+                                                                <label for="coupon" class="block text-sm font-medium text-gray-700">Coupon</label>
+                                                                <div class="mt-1 sm:col-span-2">
+                                                                    <div class="max-w-lg flex rounded-md shadow-sm percent-field">
+                                                                            <span>
+                                                                                @termedMaturities.Key.Last().Coupon
+                                                                            </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-span-12 sm:col-span-2">
+                                                                <label for="coupon" class="block text-sm font-medium text-gray-700">Yield</label>
+                                                                <div class="mt-1 sm:col-span-2">
+                                                                    <div class="max-w-lg flex rounded-md shadow-sm percent-field">
+                                                                        <span>
+                                                                                @termedMaturities.Key.Last().Yield
+                                                                            </span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-span-12 sm:col-span-2">
+                                                                <label for="dollarPrice" class="block text-sm font-medium text-gray-700">Dollar Price</label>
+                                                                <div class="mt-1 relative rounded-md shadow-sm">
+                                                                    <span>
+                                                                                @termedMaturities.Key.Last().Price
+                                                                            </span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-span-12 sm:col-span-2">
+                                                                <label for="cusip9" class="block text-sm font-medium text-gray-700">CUSIP9</label>
+                                                                <div class="mt-1 relative rounded-md shadow-sm">
+                                                                    <span>
+                                                                                @termedMaturities.Key.Last().CUSIP9LastThree
+                                                                            </span>
+                                                                </div>
+                                                            </div>
+
+                                                        </div>
+                                                    </div>
+                                                                <button @onclick="() => SplitTerm(termedMaturities.Key, series)" type="button" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-red-500 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 focus:ring-red-500">Split Term</button>
+                                                                <button @onclick="() => EditTerm(termedMaturities.Key)" type="button" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-red-500 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 focus:ring-red-500">Edit Term</button>
+                                                        <button @onclick="() => AddCallToTerm(termedMaturities.Key)" type="button" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-red-500 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 focus:ring-red-500">Add Call</button>
+
+                                                    }
+
+                                                }
+                                            </div>
+                                            <div>
+                                                <span>Totals:</span>
+                                                <span>Maturities: @series.Maturities.Count</span>
+                                                <span>Par: @string.Format("{0:C2}", series.Maturities.Sum(x => x.Par))</span>
+                                                <span>Avg. Coupon: @string.Format("{0:N2}", series.Maturities.Average(x => x.Coupon))%</span>
+                                                <span>Avg. Yield: @string.Format("{0:N2}", series.Maturities.Average(x => x.Yield))%</span>
+                                                <span>Avg. Dollar Price: @string.Format("{0:C2}", series.Maturities.Average(x => x.Price))</span>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="px-4 py-3 bg-gray-50 text-right sm:px-6 space-x-2">
+                                <button @onclick="() => dealInformation.Series.Remove(series)" type="button" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-red-500 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 focus:ring-red-500">Delete Series</button>
+                            </div>
+                        </div>
+                    }
+                    <!-- Add New Series -->
+                    <div class="p-4 sm:p-0">
+                        <div @onclick="AddSeries" class="border-4 border-dashed border-gray-200 hover:bg-gray-200 hover:border-gray-300 cursor-pointer transition-all rounded-lg p-6">
+                            <div class="flex flex-col justify-center text-center">
+                                <div class="text-lg font-bold text-gray-500 mb-2"><i class="fa-solid fa-plus"></i> Add New Series</div>
+                                <div class="text-sm text-gray-500">Add a new series and define size, tax status, rating, maturity range, and more.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hidden sm:block" aria-hidden="true">
+            <div class="py-5">
+                <div class="border-t border-gray-200"></div>
+            </div>
+        </div>
+
+        <div class="px-4 sm:px-0 flex items-center justify-end space-x-2">
+            @* Prevent enter on submit with disabled input button *@
+            <button type="submit" disabled style="display: none" aria-hidden="true"></button>
+            @if (dealInformation.IsLocked == true && dealInformation.CreatedBy != user.Id)
+            {
+            }
+            else
+            {
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-emerald-600 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 focus:ring-emerald-500 space-x-2">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>Save Deal</span>
+                </button>
+            }
+        </div>
+    </EditForm>
+}
+
+
+<style>
+    .validation-message {
+        color: red;
+    }
+</style>

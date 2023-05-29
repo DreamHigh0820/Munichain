@@ -1,0 +1,68 @@
+﻿@inject IUserService userService
+@inject IDealService dealService
+@inject IDealParticipantService dealParticipantService
+
+@if (loading)
+{
+    <UI.Components.Loading.GenericLoading />
+}
+else
+{
+    <div class="shadow overflow-hidden sm:rounded-md">
+        <div class="px-4 py-5 bg-white sm:p-6 space-y-6">
+            <div>
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Expenditures</h3>
+                <p class="mt-1 max-w-2xl text-sm text-gray-500">List the expenditures associated with this deal.</p>
+            </div>
+            <div class="space-y-6 sm:space-y-5">
+                @foreach (var item in LstDefaultExpenditures.Where(e => e.IsDeleted == false))
+                {
+                    <div class="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
+                        @if (item.IsOther)
+                        {
+                            <SfTextBox Enabled="CanCurrentUserWrite" @bind-value="@item.Name" Placeholder='Enter New Expenditure' ValueChange="@((e) => NameChange(item,e))"></SfTextBox>
+                        }
+                        else
+                        {
+                            <label for="underwriters-counsel" class="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">@item.DisplayName</label>
+                        }
+                        <div class="mt-1 sm:mt-0 sm:col-span-1">
+                            <div class="flex rounded-md shadow-sm currency-field">
+                                <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">$</span>
+                                <SfNumericTextBox Enabled="CanCurrentUserWrite" ID="numeric" Min=0 Max=10000000000 @bind-value="@item.Value" TValue="decimal?" format="n2" ShowSpinButton=false class="flex-1 block w-full focus:ring-emerald-500 focus:border-emerald-500 min-w-0 rounded-none rounded-r-md sm:text-sm border-gray-300">
+                                </SfNumericTextBox>
+                            </div>
+                        </div>
+                        <div class="mt-1 sm:mt-0 sm:col-span-1">
+                            @if (item.IsOther && CanCurrentUserWrite)
+                            {
+                                <button @onclick="@((e) => Remove(item))" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 space-x-3 whitespace-nowrap"><span class="leading-5"><i class="fa-regular fa-trash-can"></i></span></button>
+                            }
+                        </div>
+                    </div>
+                    @if (item.Equals(LastExpenditure) && CanCurrentUserWrite)
+                    {
+                        <div class="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
+                            <div class="col-start-2">
+                                <button @onclick="AddNew" class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none">Add New</button>
+                            </div>
+                        </div>
+                    }
+                }
+                <div class="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
+                    <label for="other" class="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">Total Expenditures</label>
+                    <div class="mt-1 sm:col-span-1 flex justify-between items-center">
+                        <div class="text-lg leading-6 font-medium text-gray-900">@string.Format("{0:C2}", Sum)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
+            @if (CanCurrentUserWrite)
+            {
+                <button type="submit" @onclick="Submit" form="formid" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">Save</button>
+            }
+        </div>
+    </div>
+}
+

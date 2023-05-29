@@ -1,0 +1,30 @@
+@using Microsoft.ApplicationInsights;
+@using Microsoft.Extensions.Logging
+@inject ILogger<Error> Logger
+@inject TelemetryClient _telemetryClient
+
+@namespace UI.Components.Other
+
+<CascadingValue Value="this">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    public void ProcessError(string message, Exception ex, User currentUser, DealModel deal = null)
+    {
+        toastService.ShowError("Sorry about that. Munichain has encountered an error. Please refresh or contact Munichain customer support to resolve.");
+        Logger.LogError($"User: {currentUser.Email} ID: {currentUser.Id} encountered an error on Munichain. Message: {message} Exception: {ex.Message} + {ex.StackTrace}", ex, currentUser, deal);
+
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        if (env != "Development" || env != "Local" || env != "Offline")
+        {
+            emailService.ErrorEmail(message, ex, currentUser, deal);
+            _telemetryClient.Context.User.Id = currentUser.Id;
+            _telemetryClient.TrackException(ex);
+        }
+        
+    }
+}

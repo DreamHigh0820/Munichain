@@ -1,0 +1,89 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Navigation */
+.nav-link {
+  @apply border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium;
+}
+.nav-link.active {
+  @apply border-emerald-600 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium;
+}
+
+.nav-link-mobile {
+  @apply border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800 block pl-3 pr-4 py-2 border-l-4 text-base font-medium;
+}
+.nav-link-mobile.active {
+  @apply bg-emerald-50 border-emerald-600 text-emerald-700 block pl-3 pr-4 py-2 border-l-4 text-base font-medium;
+}
+
+/* Chat */
+.chat-list-item {
+  @apply relative p-4 flex items-center space-x-3 hover:bg-gray-50 focus-within:ring-2 focus-within:ring-inset focus-within:ring-emerald-500 border-transparent border-l-4 cursor-pointer;
+}
+.chat-list-item.active {
+  @apply bg-emerald-50 border-emerald-500;
+}
+.sender-container {
+  @apply justify-end;
+}
+.recipient-container {
+  @apply justify-start;
+}
+.sender-bubble {
+  @apply bg-emerald-500 text-white;
+}
+.recipient-bubble {
+  @apply bg-gray-300 text-gray-800;
+}
+
+/* Input Fields -- Syncfusion Override */
+.e-control-wrapper:not(.e-toolbar-left .e-control-wrapper) {
+  @apply w-full py-1 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm !important;
+}
+.e-control-wrapper input, .blazored-typeahead__input-mask, .blazored-typeahead__input, .blazored-typeahead__clear {
+  @apply p-0 !important;
+}
+
+/* Support Prepend and Append Fields */
+.currency-field .e-input-group.e-control-wrapper {
+  @apply focus:ring-emerald-500 focus:border-emerald-500 rounded-none rounded-r-md border-gray-300 !important;
+}
+.percent-field .e-input-group.e-control-wrapper {
+  @apply focus:ring-emerald-500 focus:border-emerald-500 rounded-none rounded-l-md border-gray-300 !important;
+}
+
+/* Typeahead Fields */
+.blazored-typeahead {
+  @apply border-0 !important;
+}
+.blazored-typeahead__controls {
+  @apply w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm leading-none !important;
+}
+.blazored-typeahead__input {
+  @apply ring-0 rounded-none !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+}
+
+/* Support Custom Denomination Selection -- DEPRECATED SINCE MUN-149 */
+.denomination-position > span.e-numeric.e-input-group.e-control-container.e-control-wrapper {
+  @apply pl-14 !important;
+}
+
+/* Toast Notifications -- Override Default CSS */
+.blazored-toast {
+  @apply bg-white shadow-lg rounded-lg ring-1 ring-black ring-opacity-5 p-4 !important;
+}
+.blazored-toast-info .blazored-toast-heading, .blazored-toast-success .blazored-toast-heading {
+ @apply text-sm font-semibold text-emerald-600 capitalize !important;
+}
+.blazored-toast-error .blazored-toast-heading {
+  @apply text-sm font-semibold text-red-600 capitalize !important;
+}
+.blazored-toast-message {
+  @apply mt-1 text-sm text-gray-500 !important;
+}
+.blazored-toast-close {
+  @apply text-gray-400 hover:text-gray-500 !important;
+}

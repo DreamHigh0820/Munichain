@@ -1,0 +1,33 @@
+@using Microsoft.ApplicationInsights;
+@using Microsoft.Extensions.Logging
+@inject ILogger<Error> Logger
+@inject TelemetryClient _telemetryClient
+
+@inherits ErrorBoundaryBase
+
+@if (CurrentException is null)
+{
+    @ChildContent
+}
+else if (ErrorContent is not null)
+{
+    @ErrorContent(CurrentException)
+}
+else
+{
+    <div class="my-custom-error-ui">Oh no, there was a problem!</div>
+}
+
+@code {
+    protected override Task OnErrorAsync(Exception exception)
+    {
+        var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        if (env != "Development" || env != "Local" || env != "Offline")
+        {
+            _telemetryClient.TrackException(exception);
+            return emailService.ErrorEmail("Generic error on Munichain", exception);
+        }
+
+        return Task.CompletedTask;
+    }
+}

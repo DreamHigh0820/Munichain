@@ -1,0 +1,262 @@
+@inject IDealService dealService
+@inject IDealParticipantService dealParticipantService
+@if (loading)
+{
+}
+else
+{
+    <div class="shadow overflow-hidden sm:rounded-md">
+        <div class="px-4 py-5 bg-white sm:p-6 space-y-6">
+            <div class="pb-4 border-b">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Performance</h3>
+            </div>
+            <div class="grid grid-cols-6 gap-6">
+                <div class="col-span-6 sm:col-span-3">
+                    <label for="nic" class="block text-sm font-medium text-gray-700">N.I.C. (Net Interest Cost)</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="flex rounded-md shadow-sm percent-field">
+                            <SfNumericTextBox ID="numeric" Enabled="CanCurrentUserWrite" @bind-Value="dealInformation.Performance.NIC" TValue="int?" Min=0 Max=1000000000 ShowSpinButton=false class="flex-1 block w-full focus:ring-emerald-500 focus:border-emerald-500 min-w-0 rounded-none rounded-r-md sm:text-sm border-gray-300" />
+                            <span class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                                %
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-6 sm:col-span-3">
+                    <label for="tic" class="block text-sm font-medium text-gray-700">T.I.C. (True Interest Cost)</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="flex rounded-md shadow-sm percent-field">
+                            <SfNumericTextBox ID="numeric" Enabled="CanCurrentUserWrite" @bind-Value="dealInformation.Performance.TIC" TValue="int?" Min=0 Max=1000000000 ShowSpinButton=false />
+                            <span class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                                %
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-6 sm:col-span-3">
+                    <label for="gross-spread" class="block text-sm font-medium text-gray-700">Gross Spread/Bond</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="flex rounded-md shadow-sm currency-field">
+                            <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">$</span>
+                            <SfNumericTextBox ID="numeric" Enabled="CanCurrentUserWrite" @bind-Value="dealInformation.Performance.GrossSpread" Min=0 Max=10000000000 ShowSpinButton=false />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-6 sm:col-span-3">
+                    <label for="takedown" class="block text-sm font-medium text-gray-700">Takedown/Bond</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="flex rounded-md shadow-sm currency-field">
+                            <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">$</span>
+                            <SfNumericTextBox ID="numeric" Enabled="CanCurrentUserWrite" @bind-Value="dealInformation.Performance.Takedown" Min=0 Max=10000000000 ShowSpinButton=false />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-6 sm:col-span-3">
+                    <label for="retail" class="block text-sm font-medium text-gray-700">Total Retail Participation Par</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="flex rounded-md shadow-sm currency-field">
+                            <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">$</span>
+                            <SfNumericTextBox ID="numeric" Enabled="CanCurrentUserWrite" @bind-Value="dealInformation.Performance.TotalRetailPar" Min=0 Max=10000000000 ShowSpinButton=false />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-6 sm:col-span-3">
+                    <label for="institutional" class="block text-sm font-medium text-gray-700">Total Institutional Participation Par</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="flex rounded-md shadow-sm currency-field">
+                            <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">$</span>
+                            <SfNumericTextBox ID="numeric" Enabled="CanCurrentUserWrite" @bind-Value="dealInformation.Performance.TotalInstitutionalPar" Min=0 Max=10000000000 ShowSpinButton=false />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-6 sm:col-span-2">
+                    <label for="par-amount-of-bonds" class="block text-sm font-medium text-gray-700">Par Amount of Bonds</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="flex rounded-md shadow-sm currency-field">
+                            <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">$</span>
+                            <SfNumericTextBox ID="numeric" Enabled="CanCurrentUserWrite" @bind-Value="dealInformation.Performance.ParAmountBonds" Min=0 Max=10000000000 ShowSpinButton=false />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-6 sm:col-span-2">
+                    <label for="reoffering" class="block text-sm font-medium text-gray-700">Reoffering Premium (or Discount)</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="flex rounded-md shadow-sm currency-field">
+                            <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">$</span>
+                            <SfNumericTextBox ID="numeric" Enabled="CanCurrentUserWrite" @bind-Value="dealInformation.Performance.ReofferingPremium" Min=0 Max=10000000000 ShowSpinButton=false />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-6 sm:col-span-2">
+                    <label for="gross-production" class="block text-sm font-medium text-gray-700">Gross Production</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="flex rounded-md shadow-sm currency-field">
+                            <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">$</span>
+                            <SfNumericTextBox ID="numeric" Enabled="CanCurrentUserWrite" @bind-Value="dealInformation.Performance.GrossProduction" Min=0 Max=10000000000 ShowSpinButton=false />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-6 sm:col-span-2">
+                    <label for="underwriter-discount" class="block text-sm font-medium text-gray-700">Total Underwriter's Discount</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="flex rounded-md shadow-sm currency-field">
+                            <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">$</span>
+                            <SfNumericTextBox ID="numeric" Enabled="CanCurrentUserWrite" @bind-Value="dealInformation.Performance.TotalUnderwriterDiscount" Min=0 Max=10000000000 ShowSpinButton=false />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-6 sm:col-span-2">
+                    <label for="bid-dollars" class="block text-sm font-medium text-gray-700">Bid</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="flex rounded-md shadow-sm currency-field">
+                            <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">$</span>
+                            <SfNumericTextBox ID="numeric" Enabled="CanCurrentUserWrite" @bind-Value="dealInformation.Performance.Bid" Min=0 Max=10000000000 ShowSpinButton=false />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-6 sm:col-span-2">
+                    <label for="bid-percent" class="block text-sm font-medium text-gray-700">Bid</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="flex rounded-md shadow-sm percent-field">
+                            <SfNumericTextBox ID="numeric" Enabled="CanCurrentUserWrite" @bind-Value="dealInformation.Performance.BidPercentage" Min=0 Max=10000000000 ShowSpinButton=false />
+                            <span class="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">
+                                %
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-6 sm:col-span-2">
+                    <label for="bond-year-dollars" class="block text-sm font-medium text-gray-700">Bond Year Dollars</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="flex rounded-md shadow-sm">
+                            <SfNumericTextBox ID="numeric" Enabled="CanCurrentUserWrite" @bind-Value="dealInformation.Performance.BondYearDollars" TValue="decimal?" Min=0 Max=1000000000 ShowSpinButton=false />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-6 sm:col-span-2">
+                    <label for="average-life" class="block text-sm font-medium text-gray-700">Average Life</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="flex rounded-md shadow-sm">
+                            <SfNumericTextBox ID="numeric" Enabled="CanCurrentUserWrite" @bind-Value="dealInformation.Performance.AverageLife" TValue="int?" Min=0 Max=1000000000 ShowSpinButton=false />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-6 sm:col-span-2">
+                    <label for="average-coupon" class="block text-sm font-medium text-gray-700">Average Coupon</label>
+                    <div class="mt-1 sm:col-span-2">
+                        <div class="flex rounded-md shadow-sm">
+                            <SfNumericTextBox ID="numeric" Enabled="CanCurrentUserWrite" @bind-Value="dealInformation.Performance.AverageCoupon" TValue="int?" Min=0 Max=1000000000 ShowSpinButton=false />
+                        </div>
+                    </div>
+                </div>
+                @* Needs logic *@
+                @* <div class="col-span-6">
+            <label class="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">Total Purchase Price</label>
+            <div class="mt-1 sm:col-span-1 flex justify-between items-center">
+            <div class="text-lg leading-6 font-medium text-gray-900">$X.XX</div>
+            </div>
+            </div> *@
+                <div class="col-span-6 space-y-4">
+                    <div class="text-sm font-medium text-gray-700">Top Accounts</div>
+                    @foreach (var topAccount in dealInformation?.Performance?.TopAccountList.ToList())
+                    {
+                        <div class="flex items-center space-x-3">
+                            <div class="space-y-4 md:space-y-0 md:space-x-4 bg-gray-50 p-4 rounded-md flex-1 flex flex-col md:flex-row md:items-center md:justify-start">
+                                <div class="text-base font-bold text-gray-700 whitespace-nowrap">Account @(dealInformation?.Performance?.TopAccountList.FindIndex(x => x == topAccount) + 1)</div>
+                                <InputSelect disabled="@(!CanCurrentUserWrite)" @bind-Value="topAccount.AccountName" id="buyside" name="buyside" class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                    <option selected></option>
+                                    <option>16th Amednment</option>
+                                    <option>Aliance Bernstein LP</option>
+                                    <option>American Century</option>
+                                    <option>Appleton Partner, INC</option>
+                                    <option>Belle Haven Investments</option>
+                                    <option>Bessemer Trust</option>
+                                    <option>Blackrock INC</option>
+                                    <option>Blue Mountain</option>
+                                    <option>BMO</option>
+                                    <option>BNY Wealth Management</option>
+                                    <option>Breckenridge</option>
+                                    <option>City National</option>
+                                    <option>Clinton Investment LLC</option>
+                                    <option>Columbia</option>
+                                    <option>Conning Inc</option>
+                                    <option>Eagle Asset</option>
+                                    <option>Eaton Vance</option>
+                                    <option>Federated</option>
+                                    <option>Fidelity</option>
+                                    <option>Fiera (Samson)</option>
+                                    <option>Franklin Templeton Institutional</option>
+                                    <option>Fundamental Advisors</option>
+                                    <option>Glenmede</option>
+                                    <option>GSAM</option>
+                                    <option>Gurtin</option>
+                                    <option>Hartford</option>
+                                    <option>Invesco Advisors</option>
+                                    <option>Liberty Mutual</option>
+                                    <option>Lord Abbett</option>
+                                    <option>MacKay Shields</option>
+                                    <option>MFS</option>
+                                    <option>Millenium Management</option>
+                                    <option>Nuveen</option>
+                                    <option>Oppenheimer</option>
+                                    <option>PIMCO</option>
+                                    <option>PNC Asset Management</option>
+                                    <option>Putnam</option>
+                                    <option>R&C Investment Management</option>
+                                    <option>RBC Arb</option>
+                                    <option>RBC Bank Portfolio</option>
+                                    <option>RWB Asset MGMT</option>
+                                    <option>Rockefeller</option>
+                                    <option>Spring Lake</option>
+                                    <option>Standard Insurance</option>
+                                    <option>UBS Wealth Management</option>
+                                    <option>Vangaurd</option>
+                                    <option>WAMCO</option>
+                                    <option>Wellington</option>
+                                    <option>Wells Bank Portfolio</option>
+                                    <option>White Haven</option>
+                                    <option>William Jones</option>
+                                    <option>BAM</option>
+                                    <option>AGM</option>
+                                </InputSelect>
+                                <div class="flex items-center">
+                                    <div class="text-xs text-gray-600 mr-2 whitespace-nowrap">Par Amount:</div>
+                                    <div class="flex rounded-md shadow-sm currency-field md:w-64">
+                                        <span class="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500 sm:text-sm">$</span>
+                                        <SfNumericTextBox ID="numeric" Enabled="CanCurrentUserWrite" @bind-Value="topAccount.ParAmount" Min=0 Max=10000000000 ShowSpinButton=false>
+                                            <NumericTextBoxEvents TValue="decimal?" Created='() => { onCreated("#numeric"); }'></NumericTextBoxEvents>
+                                        </SfNumericTextBox>
+                                    </div>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="text-xs text-gray-600 mr-2 whitespace-nowrap">Maturity Date:</div>
+                                    <div class="max-w-lg flex rounded-md shadow-sm md:w-48">
+                                        <SfDatePicker Enabled="CanCurrentUserWrite" @bind-Value="topAccount.MaturityDateUTC" TValue="DateTime?" Placeholder='Choose a Date' class="max-w-lg block w-full shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm border-gray-300 rounded-md"></SfDatePicker>
+                                    </div>
+                                </div>
+                                @if (CanCurrentUserWrite)
+                                {
+                                    <button @onclick="() => DeleteTopAccount(topAccount)" type="button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 space-x-3 whitespace-nowrap">
+                                        <span class="leading-5"><i class="fa-regular fa-trash-can"></i></span>
+                                    </button>
+                                }
+
+                            </div>
+                        </div>
+                    }
+                    @if (CanCurrentUserWrite)
+                    {
+                        <button type="button" @onclick="() => AddTopAccount()" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">Add Top Account</button>
+
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
+            @if (CanCurrentUserWrite)
+            {
+                <button @onclick="SavePerformance" type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">Save</button>
+            }
+        </div>
+    </div>
+}

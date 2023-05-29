@@ -1,0 +1,9 @@
+{
+"Azure:SignalR:ConnectionString": "Endpoint=https://munichain.service.signalr.net;AccessKey=e3vCrugdyNkXgref+RK+ul30k4X5jKbfu7ndiwSL8ho=;Version=1.0;",
+"AzureAd:ClientSecret": "Lzh8Q~MFf_3FWy5YhilN3oVbBnVLa3DZLnv6Ua2d",
+"AzureBlobStorage:ConnectionString:blob": "DefaultEndpointsProtocol=https;AccountName=stmunichaindev;AccountKey=dsBWDg3X1tuAY46VDXnWX7Uxqxq2W9kCYaGAA1+o0gGeWQCSOXx2SXPTYfs4kj3MjXM78SlxEBCw+AStijdrTQ==;EndpointSuffix=core.windows.net",
+"SyncfusionLicense": "OTE1ODE3QDMyMzAyZTM0MmUzMExHNlc4MURKeXFLZDlKQXJrTEFGV2F5S3JLSFNqT2FhWTZpWlFPY21XS0U9",
+"OpenAi:ApiKey": "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"
+}
+
+Server=tcp:sqlmunichaindev.database.windows.net,1433;Initial Catalog=munichain;Persist Security Info=False;User ID=saad;Password=SuperSecret!;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;

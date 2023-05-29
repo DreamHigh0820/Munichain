@@ -1,0 +1,383 @@
+﻿@page "/document/{DocumentId}/{saved}"
+@page "/document/{DocumentId}"
+@implements IDisposable
+@inject AuthenticationStateProvider authenticationStateProvider
+@inject InitialStateProvider stateProvider
+@inject IUserService userService
+@inject IDealService dealService
+@inject IDocumentService documentService
+@inject IAnnotationService annotationService
+@inject IBoldsignService boldsignService
+@inject INotificationService notificationService
+@inject IDealParticipantService dealParticipantService
+@inject IFileService fileService
+
+<Loading loading="@uploading" Delay=false Overlay=true Message="Please wait while the file saves"></Loading>
+
+
+@if (loading)
+{
+    <div class="mx-auto sm:px-6 lg:px-8 space-y-8 py-10">
+        <UI.Components.Loading.GenericLoading />
+    </div>
+}
+else
+{
+    <div class="mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <nav class="flex" aria-label="Breadcrumb">
+            <ol role="list" class="flex items-center space-x-4 overflow-hidden">
+                <li>
+                    <div>
+                        <a href="/" class="text-gray-400 hover:text-gray-500">
+                            <svg class="flex-shrink-0 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                            </svg>
+                            <span class="sr-only">Home</span>
+                        </a>
+                    </div>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="flex-shrink-0 h-5 w-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                            <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
+                        </svg>
+                        <button @onclick="@(() => navigationManager.NavigateTo($"/deals"))" class="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700">Deals</button>
+                    </div>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="flex-shrink-0 h-5 w-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                            <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
+                        </svg>
+                        <button @onclick="@(() => navigationManager.NavigateTo($"/deal/{deal?.Id}/documents"))" class="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700 whitespace-nowrap" aria-current="page">@deal?.Issuer</button>
+                    </div>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="flex-shrink-0 h-5 w-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                            <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
+                        </svg>
+                        <div class="ml-4 text-sm font-medium text-gray-500 truncate" aria-current="page">@(isBoldSignDocument ? boldSignDocumentProperties?.MessageTitle : document?.Name)</div>
+                    </div>
+                </li>
+            </ol>
+        </nav>
+    </div>
+
+    // Boldsign and blob storage are PDF documents, 
+    // we want to display PDF and word on same component
+    @if (isWordDocument)
+    {
+        var enableSaving = SomeoneEditing == null && (document.CreatedBy == user.Email || (dealParticipants.Select(x => x.EmailAddress).Contains(user.Email) && document.PublicDocumentViewSettings != PublicDocumentViewSettings.Private));
+        <div class="py-10">
+            <header>
+                <div class="mx-auto px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
+                    <div class="flex items-center justify-between space-x-4">
+                        <h1 class="text-3xl font-bold leading-tight text-gray-900 mr-auto truncate">@document.Name</h1>
+                        @if (enableSaving)
+                        {
+                            <button type="button" @onclick=OnSaveDocument class="inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">
+                                <i class="fa-solid fa-check"></i>
+                                <span>Save</span>
+                            </button>
+                        }
+                        else if (SomeoneEditing != null && dealParticipants.Select(x => x.EmailAddress).Contains(user.Email))
+                        {
+                            <b>@SomeoneEditing.DisplayName is editing</b>
+                        }
+                    </div>
+                </div>
+            </header>
+            <main>
+                <div class="mx-auto sm:px-6 lg:px-8 space-y-8">
+                    <div class="bg-white shadow overflow-hidden sm:rounded-lg p-4 sm:p-6">
+                        <SfDocumentEditorContainer @ref="Container" CurrentUser="@user.DisplayName" Height="600px" RestrictEditing=!enableSaving EnableToolbar=enableSaving>
+                            <DocumentEditorContainerEvents Created="OnLoad"></DocumentEditorContainerEvents>
+                        </SfDocumentEditorContainer>
+                    </div>
+                </div>
+            </main>
+        </div>
+    }
+    else
+    {
+        <div class="py-10">
+            <header>
+                <div class="mx-auto px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
+                    <div class="flex items-center justify-between space-x-4">
+                        <h1 class="text-3xl font-bold leading-tight text-gray-900 mr-auto truncate">
+                            @if (isBoldSignDocument)
+                            {
+                                @boldSignDocumentProperties?.MessageTitle
+                            }
+                            else
+                            {
+                                @document?.Name
+                            }
+                        </h1>
+                    </div>
+                </div>
+            </header>
+            <main>
+                <div class="mx-auto sm:px-6 lg:px-8 space-y-8">
+                    <div class="bg-white shadow overflow-hidden sm:rounded-lg p-4 sm:p-6">
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="col-span-3 md:col-span-2">
+                                <SfPdfViewerServer HyperlinkOpenState="LinkTarget.NewTab" Height="100%" Width="100%" @ref="Viewer" ToolbarSettings=ToolbarSettings>
+                                </SfPdfViewerServer>
+                            </div>
+                            @* If it's a boldsign document we will show the signers*@
+                            @* otherwise we show comments for pdf viewing*@
+                            @if (boldSignDocumentProperties != null)
+                            {
+                                <div class="col-span-3 md:col-span-1 border max-h-full">
+                                    <div class="p-4 sm:p-6 space-y-4">
+                                        <h3 class="text-lg leading-6 font-medium text-gray-900">
+                                            Signers
+                                        </h3>
+                                        <div class="-mx-4 mt-8 overflow-hidden ring-1 ring-gray-300 sm:-mx-6 md:mx-0 md:rounded-md">
+                                            <table class="min-w-full divide-y divide-gray-300">
+                                                <thead class="bg-gray-50">
+                                                    <tr>
+                                                        <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Signer</th>
+                                                        <th scope="col" class="hidden px-3 py-3.5 text-left text-sm font-semibold text-gray-900 lg:table-cell">Email</th>
+                                                        <th scope="col" class="hidden px-3 py-3.5 text-left text-sm font-semibold text-gray-900 sm:table-cell">Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-gray-200 bg-white">
+                                                    @foreach (var signer in boldSignDocumentProperties.SignerDetails)
+                                                    {
+                                                        <tr>
+                                                            <td class="w-full max-w-0 py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:w-auto sm:max-w-none sm:pl-6">
+                                                                @signer.SignerName
+                                                                <dl class="font-normal lg:hidden">
+                                                                    <dt class="sr-only">Email</dt>
+                                                                    <dd class="mt-1 truncate text-gray-700">@signer.SignerEmail</dd>
+                                                                    <dt class="sr-only sm:hidden">Status</dt>
+                                                                    <dd class="mt-1 truncate text-gray-500 sm:hidden">@signer.Status</dd>
+                                                                </dl>
+                                                            </td>
+                                                            <td class="hidden px-3 py-4 text-sm text-gray-500 lg:table-cell">@signer.SignerEmail</td>
+                                                            <td class="hidden px-3 py-4 text-sm text-gray-500 sm:table-cell">@signer.Status</td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="col-span-3 md:col-span-1 border max-h-screen overflow-y-scroll">
+                                    <div class="px-4 py-3 border-b bg-gray-50/75 flex items-center justify-between sticky top-0 backdrop-blur-md z-20">
+                                        <h3 class="text-lg leading-none font-medium text-gray-900">Comments</h3>
+                                        <button @onclick="AddAnnotation" form="formid" class="inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 space-x-2">
+                                            <i class="fa-solid fa-plus"></i>
+                                            <span>New Comment</span>
+                                        </button>
+                                    </div>
+                                    <div class="divide-y">
+                                        @if (annotations != null && annotations.Any())
+                                        {
+                                            @foreach (var note in annotations.OrderBy(x => x.CreatedTime))
+                                            {
+                                                <div class="p-4">
+                                                    @if (note.CreatedById == user.Id)
+                                                    {
+                                                        <div class="space-y-1 mb-2">
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="font-bold text-gray-700">@note.Author</span>
+                                                                <span class="text-xs leading-none text-gray-400">@note.CreatedTime</span>
+                                                            </div>
+                                                            @if (!note.IsEdit)
+                                                            {
+                                                                <div class="text-base text-gray-500 leading-normal text-ellipsis overflow-hidden">
+                                                                    @((MarkupString)note.TextMarkupContent)
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                        <div class="flex items-center justify-start flex-wrap mb-1">
+                                                            @if (note.IsEdit)
+                                                            {
+                                                                <div class="mb-1 w-full">
+                                                                    <SfRichTextEditor Items="@Tools" @bind-Value="@note.TextMarkupContent" />
+                                                                </div>
+                                                                <button @onclick="(() => note.IsEdit = false)" form="formid" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-xs font-medium rounded-md bg-white text-gray-700 hover:bg-gray-50 focus:outline-none space-x-2 whitespace-nowrap mb-1 mr-1">
+                                                                    <span><i class="fa-solid fa-xmark"></i></span>
+                                                                    <span>Cancel</span>
+                                                                </button>
+                                                                <button @onclick="(() => SaveAnnotation(note))" form="formid" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-xs font-medium rounded-md bg-white text-emerald-600 hover:bg-gray-50 focus:outline-none space-x-2 whitespace-nowrap mb-1 mr-1">
+                                                                    <span><i class="fa-solid fa-check"></i></span>
+                                                                    <span>Save</span>
+                                                                </button>
+                                                                if (!note.IsPublished)
+                                                                {
+                                                                    <button @onclick="(() => DeleteAnnotation(note))" form="formid" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-xs font-medium rounded-md bg-white text-red-600 hover:bg-gray-50 focus:outline-none space-x-2 whitespace-nowrap mb-1 mr-1">
+                                                                        <span><i class="fa-solid fa-trash-can"></i></span>
+                                                                        <span>Delete</span>
+                                                                    </button>
+                                                                    <button @onclick="(() => PublishAnnotation(note))" form="formid" class="inline-flex justify-center px-3 py-2 border border-transparent shadow-sm text-xs font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 mb-1 mr-1">
+                                                                        <span><i class="fa-solid fa-paper-plane"></i></span>
+                                                                        <span>Publish</span>
+                                                                    </button>
+                                                                }
+                                                            }
+                                                            else
+                                                            {
+                                                                <button @onclick="(() => note.IsEdit = true)" form="formid" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-xs font-medium rounded-md bg-white text-gray-700 hover:bg-gray-50 focus:outline-none space-x-2 whitespace-nowrap mb-1 mr-1">
+                                                                    <span><i class="fa-solid fa-pen-to-square"></i></span>
+                                                                    <span>Edit</span>
+                                                                </button>
+                                                                if (!note.IsPublished)
+                                                                {
+                                                                    <button @onclick="(() => DeleteAnnotation(note))" form="formid" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-xs font-medium rounded-md bg-white text-red-600 hover:bg-gray-50 focus:outline-none space-x-2 whitespace-nowrap mb-1 mr-1">
+                                                                        <span><i class="fa-solid fa-trash-can"></i></span>
+                                                                        <span>Delete</span>
+                                                                    </button>
+                                                                    <button @onclick="(() => PublishAnnotation(note))" form="formid" class="inline-flex justify-center px-3 py-2 border border-transparent shadow-sm text-xs font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 space-x-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 mb-1 mr-1">
+                                                                        <span><i class="fa-solid fa-paper-plane"></i></span>
+                                                                        <span>Publish</span>
+                                                                    </button>
+                                                                }
+                                                            }
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="space-y-1 mb-2">
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="font-bold text-gray-700">@note.Author</span>
+                                                                <span class="text-xs leading-none text-gray-400">@note.CreatedTime</span>
+                                                            </div>
+                                                            <div class="text-base text-gray-500 leading-normal text-ellipsis overflow-hidden">
+                                                                @((MarkupString)note.TextMarkupContent)
+                                                            </div>
+                                                            <div class="flex items-center justify-between flex-wrap text-sm border-t pt-2 mt-2">
+                                                                <div class="whitespace-nowrap text-gray-500 space-x-1">
+                                                                    <span>Page:</span><span class="font-bold">@note.PageNumber</span>
+                                                                </div>
+                                                                <button class="text-emerald-600 hover:text-emerald-800 hover:underline" @onclick="(() => GoToAnnotation(note.PageNumber.Value))">Go To Page</button>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                    @if (note.Comments != null && note.Comments.Any())
+                                                    {
+                                                        <div class="border-t pb-2">
+                                                            @foreach (var comment in note.Comments.Where(x => x.IsDeleted == false).OrderByDescending(x => x.CreatedTime))
+                                                            {
+                                                                <div class="relative pl-4 mt-2">
+                                                                    <span class="absolute top-0 left-0 h-full w-px bg-gray-200" aria-hidden="true"></span>
+                                                                    @if (comment.CreatedById == user.Id)
+                                                                    {
+                                                                        <div class="space-y-1">
+                                                                            <div class="flex items-center justify-between">
+                                                                                <span class="font-bold text-gray-700">@comment.CreatedByUserName</span>
+                                                                                <span class="text-xs leading-none text-gray-400">@comment.CreatedTime</span>
+                                                                            </div>
+                                                                            @if (!comment.IsEdit)
+                                                                            {
+                                                                                <div class="text-base text-gray-500 leading-normal text-ellipsis overflow-hidden">
+                                                                                    @((MarkupString)comment.Message)
+                                                                                </div>
+                                                                            }
+                                                                        </div>
+                                                                        @if (comment.IsEdit)
+                                                                        {
+                                                                            <div class="flex items-center justify-start flex-wrap mt-2">
+                                                                                <div class="mb-1 w-full">
+                                                                                    <SfRichTextEditor Items="@Tools" @bind-Value="@comment.Message" />
+                                                                                </div>
+                                                                                <button @onclick="(() => comment.IsEdit = false)" form="formid" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-xs font-medium rounded-md bg-white text-gray-700 hover:bg-gray-50 focus:outline-none space-x-2 whitespace-nowrap mb-1 mr-1">
+                                                                                    <span><i class="fa-solid fa-xmark"></i></span>
+                                                                                    <span>Cancel</span>
+                                                                                </button>
+                                                                                <button @onclick="(() => SaveComment(comment, note))" form="formid" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-xs font-medium rounded-md bg-white text-emerald-600 hover:bg-gray-50 focus:outline-none space-x-2 whitespace-nowrap mb-1 mr-1">
+                                                                                    <span><i class="fa-solid fa-check"></i></span>
+                                                                                    <span>Save</span>
+                                                                                </button>
+                                                                                <button @onclick="(() => DeleteComment(note, comment))" form="formid" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-xs font-medium rounded-md bg-white text-red-600 hover:bg-gray-50 focus:outline-none space-x-2 whitespace-nowrap mb-1 mr-1">
+                                                                                    <span><i class="fa-solid fa-trash-can"></i></span>
+                                                                                    <span>Delete</span>
+                                                                                </button>
+                                                                            </div>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <div class="flex items-center justify-start flex-wrap mt-2">
+                                                                                <button @onclick="(() => comment.IsEdit = true)" form="formid" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-xs font-medium rounded-md bg-white text-gray-700 hover:bg-gray-50 focus:outline-none space-x-2 whitespace-nowrap">
+                                                                                    <span><i class="fa-solid fa-pen-to-square"></i></span>
+                                                                                    <span>Edit</span>
+                                                                                </button>
+                                                                            </div>
+                                                                        }
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <div class="space-y-1">
+                                                                            <div class="flex items-center justify-between">
+                                                                                <span class="font-bold text-gray-700">@comment.CreatedByUserName</span>
+                                                                                <span class="text-xs leading-none text-gray-400">@comment.CreatedTime</span>
+                                                                            </div>
+                                                                            <div class="text-base text-gray-500 leading-normal text-ellipsis overflow-hidden">
+                                                                                @((MarkupString)comment.Message)
+                                                                            </div>
+                                                                        </div>
+                                                                    }
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                    <div class="border-t pt-2">
+                                                        <button type="submit" @onclick="(() => AddComment(note))" form="formid" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-white bg-white text-gray-700 hover:bg-gray-50 focus:outline-none space-x-3 whitespace-nowrap">
+                                                            <i class="fa-solid fa-reply"></i>
+                                                            <span>Reply</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    }
+}
+@code {
+    SfRichTextEditor RteObj;
+    private string Value { get; set; }
+    public void ValueChangeHandler(Syncfusion.Blazor.RichTextEditor.ChangeEventArgs args)
+    {
+        this.Value = args.Value;
+    }
+    private List<ToolbarItemModel> Tools = new List<ToolbarItemModel>()
+    {
+        new ToolbarItemModel() { Command = ToolbarCommand.Bold },
+        new ToolbarItemModel() { Command = ToolbarCommand.Italic },
+        new ToolbarItemModel() { Command = ToolbarCommand.Underline },
+        new ToolbarItemModel() { Command = ToolbarCommand.StrikeThrough },
+        new ToolbarItemModel() { Command = ToolbarCommand.Separator },
+        new ToolbarItemModel() { Command = ToolbarCommand.FontColor },
+        new ToolbarItemModel() { Command = ToolbarCommand.BackgroundColor },
+        new ToolbarItemModel() { Command = ToolbarCommand.Separator },
+        new ToolbarItemModel() { Command = ToolbarCommand.Formats },
+        new ToolbarItemModel() { Command = ToolbarCommand.Alignments },
+        new ToolbarItemModel() { Command = ToolbarCommand.Separator },
+        new ToolbarItemModel() { Command = ToolbarCommand.OrderedList },
+        new ToolbarItemModel() { Command = ToolbarCommand.UnorderedList },
+        new ToolbarItemModel() { Command = ToolbarCommand.Separator },
+        new ToolbarItemModel() { Command = ToolbarCommand.Outdent },
+        new ToolbarItemModel() { Command = ToolbarCommand.Indent },
+        new ToolbarItemModel() { Command = ToolbarCommand.Separator },
+        new ToolbarItemModel() { Command = ToolbarCommand.CreateLink },
+        new ToolbarItemModel() { Command = ToolbarCommand.Image },
+        new ToolbarItemModel() { Command = ToolbarCommand.CreateTable },
+        new ToolbarItemModel() { Command = ToolbarCommand.Separator },
+        new ToolbarItemModel() { Command = ToolbarCommand.Undo },
+        new ToolbarItemModel() { Command = ToolbarCommand.Redo }
+    };
+}

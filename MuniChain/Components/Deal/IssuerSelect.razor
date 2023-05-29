@@ -1,0 +1,94 @@
+﻿@using global::Shared.Models.Users;
+@if (loading) {
+    
+}
+else
+{
+    <SfDropDownList @ref="IssuerInput" @bind-Value="createDeal.Issuer" AllowFiltering=true TValue="string" TItem="string" Placeholder="Issuer Name" DataSource="@IssuerFirms">
+        <DropDownListFieldSettings Text="Name" Value="Name"></DropDownListFieldSettings>
+        <DropDownListTemplates TItem="string">
+            <NoRecordsTemplate>
+                @if (!string.IsNullOrEmpty(Custom))
+                {
+                    <div>
+                        <SfButton id="btn" class="e-control e-btn" style="margin-top: 10px" @onclick="@AddIssuerFirm">Add Issuer</SfButton>
+                    </div>
+                }
+            </NoRecordsTemplate>
+        </DropDownListTemplates>
+        <DropDownListEvents TValue="string" TItem="string" Filtering="OnFilter"></DropDownListEvents>
+    </SfDropDownList>
+}
+
+@code {
+    [Parameter]
+    public DealModel createDeal { get; set; }
+    [Parameter]
+    public User user{ get; set; }
+    [CascadingParameter]
+    public Error Error { get; set; }
+    [Inject]
+    public IFirmsService firmsService { get; set; }
+    SfDropDownList<string, string> IssuerInput { get; set; }
+    public string Custom;
+    public List<string> IssuerFirms = new();
+    public bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        loading = true;
+        var issuer = await firmsService.GetByName(createDeal?.Issuer);
+        await LoadIssuerFirms(null, add: issuer == null ? true : false);
+        loading = false;
+    }
+
+    private async Task OnFilter(FilteringEventArgs args)
+    {
+        args.PreventDefaultAction = true;
+        Custom = args.Text;
+        if (args.Text.Length > 0) {
+            await LoadIssuerFirms(Custom);
+            StateHasChanged();
+        }
+        else
+        {
+            await LoadIssuerFirms(null);
+            StateHasChanged();
+        }
+        
+    }
+
+    public async Task LoadIssuerFirms(string srchText, List<string> selectedIds = null, bool add = false)
+    {
+        IssuerFirms = (await firmsService.GetFirmsForDrpdown(false, FirmType.Issuer, srchText, selectedIds)).Select(x => x.Name).ToList();
+
+        if (add)
+        {
+            IssuerFirms.Add(createDeal.Issuer);
+        }
+    }
+    
+    public async Task AddIssuerFirm()
+    {
+        try
+        {
+            if (Custom?.Trim()?.Length <= 2)
+            {
+                return;
+            }
+
+            var newFirm = new Firm() { Id = Guid.NewGuid().ToString(), Name = Custom, FirmType = FirmType.Issuer, Confirmed = false };
+            await firmsService.Create(newFirm);
+            await emailService.CustomFirmInput(user, newFirm, createDeal);
+
+            await IssuerInput.HidePopupAsync();
+            createDeal.Issuer = newFirm.Name;
+            await LoadIssuerFirms(null, new List<string>() { newFirm.Id });
+        }
+        catch (Exception ex)
+        {
+            Error?.ProcessError("Failed to add issuer firm", ex, user, createDeal);
+            return;
+        }
+    }
+}

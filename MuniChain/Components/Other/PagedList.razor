@@ -1,0 +1,40 @@
+﻿@typeparam TItem
+@if (!ListQuery.Any())
+{
+}
+else
+{
+    var iteration = 0;
+    @foreach (TItem item in CurrentDisplay)
+    {
+        @ItemDisplay(item)
+    }
+    @if (TotalPages() > 1)
+    {
+        <div class="w-full pt-4">
+            <div class="isolate inline-flex -space-x-px rounded-md shadow-sm">
+                @if (CurrentPage == 1)
+                {
+                    <button disabled class="relative hidden items-center rounded-l-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-400 cursor-default md:inline-flex"><i class="fa-solid fa-angles-left"></i></button>
+                    <button disabled class="relative hidden items-center border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-400 cursor-default md:inline-flex"><i class="fa-solid fa-angle-left"></i></button>
+                }
+                else
+                {
+                    <button @onclick="@MoveFirst" title="First Page" class="relative hidden items-center rounded-l-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20 md:inline-flex"><i class="fa-solid fa-angles-left"></i></button>
+                    <button @onclick="@MoveBack" title="Previous Page" class="relative hidden items-center border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20 md:inline-flex"><i class="fa-solid fa-angle-left"></i></button>
+                }
+                <span class="relative inline-flex items-center border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700">@CurrentPage of @TotalPages()</span>
+                @if (!AtLastPage())
+                {
+                    <button @onclick="@MoveNext" title="Next Page" class="relative hidden items-center border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20 md:inline-flex"><i class="fa-solid fa-angle-right"></i></button>
+                    <button @onclick="@MoveLast" title="Last Page" class="relative hidden items-center rounded-r-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-20 md:inline-flex"><i class="fa-solid fa-angles-right"></i></button>
+                }
+                else
+                {
+                    <button disabled class="relative hidden items-center border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-400 cursor-default md:inline-flex"><i class="fa-solid fa-angle-right"></i></button>
+                    <button disabled class="relative hidden items-center rounded-r-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-400 cursor-default md:inline-flex"><i class="fa-solid fa-angles-right"></i></button>
+                }
+            </div>
+        </div>
+    }
+}

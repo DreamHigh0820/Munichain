@@ -1,0 +1,28 @@
+{
+  "dependencies": {
+    "secrets1": {
+      "type": "secrets",
+      "connectionId": "VaultUri"
+    },
+    "storage1": {
+      "type": "storage",
+      "connectionId": "AzureBlobStorage:ConnectionString"
+    },
+    "secrets2": {
+      "type": "secrets"
+    },
+    "signalr1": {
+      "type": "signalr",
+      "connectionId": "Azure:SignalR:ConnectionString"
+    },
+    "appInsights1": {
+      "type": "appInsights",
+      "dynamicId": null
+    },
+    "mssql1": {
+      "type": "mssql",
+      "connectionId": "MuniChain",
+      "dynamicId": null
+    }
+  }
+}

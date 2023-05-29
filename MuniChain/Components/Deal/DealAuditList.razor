@@ -1,0 +1,105 @@
+@inject AuthenticationStateProvider authenticationStateProvider
+@inject IDealService dealService
+@inject TelemetryClient telemetry
+
+<SfDialog Target="#target" Height="auto" Width="70%" ShowCloseIcon="true" Header="Differences" @bind-Visible="@DealDiffPopup" AllowPrerender="true" IsModal="true">
+    <DialogEvents OnOverlayModalClick="@(() => this.DealDiffPopup = false)"></DialogEvents>
+    <DialogTemplates>
+        <Content>
+            <div class="flex flex-col">
+                <div class="overflow-x-auto border border-gray-300 rounded-md">
+                    <div class="inline-block min-w-full align-middle">
+                        <div class="overflow-hidden">
+                            @{
+                                var maturitiesExist = dealDiffs.Any(x => !string.IsNullOrEmpty(x.MaturityDate));
+                                var Hide = (new string[] { "BaseModelName" });
+
+                            }
+                            <SfGrid DataSource="@dealDiffs" AllowGrouping="true" Height="500">
+                                <GridGroupSettings ShowDropArea="false" Columns=@Hide></GridGroupSettings>
+                                <GridColumns>
+                                    <GridColumn Field=@nameof(ConcurrencyItem.BaseModelName) HeaderText="" TextAlign="TextAlign.Right" Width="30%"></GridColumn>
+                                    <GridColumn Field=@nameof(ConcurrencyItem.Prop) HeaderText="Property" Width="30%"></GridColumn>
+                                    @{ string format = "C2"; }
+                                    <GridColumn Visible="@maturitiesExist" Field=@nameof(ConcurrencyItem.MaturityDate) HeaderText="Date" Width="10%"></GridColumn>
+                                    <GridColumn Field=@nameof(ConcurrencyItem.EventType) HeaderText="Action" TextAlign="TextAlign.Right" Width="15%"></GridColumn>
+                                    <GridColumn Field=@nameof(ConcurrencyItem.Updated) HeaderText="New" TextAlign="TextAlign.Right" Width="15%">
+                                        <Template>
+                                            @{ var ctx = context as ConcurrencyItem; }
+                                            @if (ctx?.Updated != null && ctx.IsUpdatedDateTime)
+                                            {
+                                                @DateTime.Parse(ctx?.Updated?.ToString()).ToShortDateString()
+                                            }
+                                            else if (ctx?.Updated != null && ctx.IsUpdatedDecimal)
+                                            {
+                                                @decimal.Parse(ctx?.Updated?.ToString()).ToString("N",new CultureInfo("en-US"))
+                                            }
+                                            else
+                                            {
+                                                @ctx?.Updated?.ToString()
+                                            }
+                                        </Template>
+                                    </GridColumn>
+                                    <GridColumn Field=@nameof(ConcurrencyItem.FromDB) HeaderText="Old" TextAlign="TextAlign.Right" Width="25%">
+                                        <Template>
+                                            @{
+                                                var ctx = context as ConcurrencyItem;
+                                            }
+                                            @if (ctx?.FromDB != null && ctx?.IsFromDBDateTime == true)
+                                            {
+                                                @DateTime.Parse(ctx?.FromDB.ToString()).ToShortDateString()
+                                            }
+                                            else if (ctx?.FromDB != null && ctx?.IsFromDBDecimal == true)
+                                            {
+                                                @decimal.Parse(ctx?.FromDB.ToString()).ToString("N",new CultureInfo("en-US"))
+                                            }
+                                            else
+                                            {
+                                                @ctx?.FromDB?.ToString()
+                                            }
+                                        </Template>
+                                    </GridColumn>
+                                </GridColumns>
+                            </SfGrid>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Content>
+    </DialogTemplates>
+</SfDialog>
+
+@if (loading)
+{
+    <UI.Components.Loading.GenericLoading />
+}
+else
+{
+    <div class="shadow overflow-hidden sm:rounded-md px-4 py-5 bg-white sm:p-6">
+        <div class="pb-4 border-b mb-4">
+            <div class="text-lg leading-6 font-medium text-gray-900">Audit History</div>
+        </div>
+        <div class="mb-3 text-base text-gray-700 font-medium">@ChangeEvents.Count() published versions</div>
+        @if (@ChangeEvents.Count() <= 1)
+        {
+            <div>Publish your deals to Munichain to compare historical data.</div>
+        }
+        <div class="space-y-2">
+            @foreach (var dealChange in ChangeEvents)
+            {
+                var indexOfChange = ChangeEvents.IndexOf(dealChange);
+                var indexOfLast = ChangeEvents.IndexOf(ChangeEvents.Last());
+
+                <div class="bg-gray-50 border rounded-lg flex items-center justify-between p-4 space-x-3">
+                    <div class="mr-auto text-gray-700">@dealChange.Status on <strong>@dealChange.LastModifiedDateTimeUTC</strong> by <strong>@dealChange.LastModifiedByDisplayName</strong></div>
+                    @if (indexOfChange != indexOfLast)
+                    {
+                        var compareTo = ChangeEvents.ElementAt(ChangeEvents.IndexOf(dealChange) + 1) ?? null;
+                        <button class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 focus:ring-emerald-500" @onclick="(() => CompareDeals(dealChange, compareTo))">Compare</button>
+                    }
+                    <button class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" @onclick="(() => LoadDeal(dealChange.Id))">View</button>
+                </div>
+            }
+        </div>
+    </div>
+}

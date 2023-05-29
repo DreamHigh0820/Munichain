@@ -1,0 +1,189 @@
+﻿@implements IAsyncDisposable
+@inject IHttpContextAccessor HttpContextAccessor
+@inject InitialStateProvider stateProvider
+@inject IUserService userService
+@inject AuthenticationStateProvider authenticationStateProvider
+@inject IChatService chatService
+@inject IConversationService conversationService
+
+<SfDialog Target="#target" Height="auto" Width="500" ShowCloseIcon="true" Header="New Conversation" @bind-Visible="@ShowAddConversation" AllowPrerender="true" IsModal="true">
+    <DialogTemplates>
+        <Content>
+            <SfMultiSelect @ref="@MultiSelectUsers" TValue="string[]" TItem="User" Placeholder="Jane Doe" EnableVirtualization="true" Query="@LocalDataQuery" DataSource="@UserList">
+                <MultiSelectEvents TItem="User" TValue="string[]" OnValueSelect="@OnValueSelecthandler" OnValueRemove="@OnValueRemoveHandler" Cleared="@Clearedhandler"></MultiSelectEvents>
+                <MultiSelectTemplates TItem="User">
+                    <ItemTemplate>
+                        <span>
+                            <b><span class='name'>@((context as User).DisplayName)</span></b>
+                            <br /><span class='country'>@((context as User).Email)</span>
+                        </span>
+                    </ItemTemplate>
+                </MultiSelectTemplates>
+                <MultiSelectFieldSettings Text="DisplayName"></MultiSelectFieldSettings>
+            </SfMultiSelect>
+            <SfButton @onclick="AddNewConversation" class="inline-flex justify-center py-2 px-4 border border-transparent
+                    shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700
+                    focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600"
+                      Disabled="@(Recipients.Count() == 0)">Done</SfButton>
+        </Content>
+    </DialogTemplates>
+</SfDialog>
+
+@if (ChatMinimized)
+{
+    <div class="bg-emerald-600 hover:bg-emerald-700 drop-shadow-2xl w-screen md:w-80 cursor-pointer md:rounded-tl-xl px-4 py-3 flex items-center justify-between leading-none text-white" @onclick=MinimizeChat>
+        <div class="font-bold">Messaging</div>
+        @* Show this div if user has unread messages, replace text with unread count *@
+        @{
+            int numberOfUnreadConversations = ConversationsList.Where(c => !c.ConversationReadByMembers.Contains(user.Email)).Count();
+            if (numberOfUnreadConversations > 0)
+            {
+                <div class="text-xs leading-none bg-red-500 border-2 border-white text-white font-bold py-0.5 px-2 rounded-full ml-3">
+                    @numberOfUnreadConversations
+                </div>
+            }
+        }
+        <div class="ml-auto"><span class="text-xs mr-2">Expand</span><i class="fa-solid fa-up-right-and-down-left-from-center"></i></div>
+    </div>
+}
+else
+{
+    <div class="bg-gray-100 md:rounded-tl-xl drop-shadow-2xl flex flex-col flex-auto"
+         style="height: calc(100vh - 200px);
+        width: 768px;
+        max-width: 100vw;
+        min-width: 0;
+        animation: fade-in 167ms cubic-bezier(.4,0,1,1);">
+        <div class="bg-emerald-600 hover:bg-emerald-700 w-full cursor-pointer md:rounded-tl-xl px-4 py-3 flex items-center justify-between leading-none text-white z-50" @onclick=MinimizeChat>
+            <div class="font-bold">Messaging</div>
+            <div><span class="text-xs mr-2">Minimize</span><i class="fa-solid fa-down-left-and-up-right-to-center"></i></div>
+        </div>
+        <div class="grid grid-rows-3 md:grid-rows-1 grid-cols-1 md:grid-cols-3 h-full overflow-auto">
+            <div class="row-span-1 col-span-1 min-h-0 overflow-auto">
+                <div class="bg-white h-full">
+                    @* List of all active conversations *@
+                    <ul role="list" class="relative z-0 divide-y divide-gray-200">
+                        <div class="py-2 px-3 flex justify-end">
+                            <button @onclick="(() => this.ShowAddConversation = true)" class="text-emerald-600 underline hover:text-emerald-700 text-sm"><i class="fa-solid fa-pen-to-square"></i> New Conversation</button>
+                        </div>
+                        @* Loop <li> for each active convo *@
+
+                        @foreach (var conversation in ConversationsList)
+                        {
+                            string displayNames = conversation.MemberDisplayNames;
+                            displayNames = RemoveCurrentUserName(displayNames, user.DisplayName);
+
+                            bool isGroupChat = conversation.MemberEmails.Split(',').Count() > 2;
+                            string defaultProfilePath = "https://stmunichaindev.blob.core.windows.net/profile-pictures/default.png";
+                            string profilePicturePath = defaultProfilePath;
+
+                            if (!isGroupChat)
+                            {
+                                string[] memberIds = conversation.MemberIds.Split(',');
+                                if (memberIds[0] == user.Id)
+                                {
+                                    profilePicturePath = "https://stmunichaindev.blob.core.windows.net/profile-pictures/" + memberIds[1];
+                                }
+                                else
+                                {
+                                    profilePicturePath = "https://stmunichaindev.blob.core.windows.net/profile-pictures/" + memberIds[0];
+                                }
+                            }
+
+                            <SfTooltip OpenDelay="500" Target="@("#convo_" + conversation.Id)" Content="@displayNames">
+                                <li id="@("convo_" + conversation.Id)" class="bg-white" onclick="@(() => SwitchConversation(conversation))" tooltip>
+                                    @* Add "active" class to following <div> if this chat is active *@
+                                    <div class="chat-list-item relative @(CurrentConversation.Id == conversation.Id ? "active":"")">
+                                        <div class="flex-shrink-0">
+                                            <img class="h-10 w-10 rounded-full bg-white" src="@profilePicturePath" onerror="this.src='images/default.png'" />
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-900 truncate">@displayNames</p>
+                                        </div>
+                                        @* Show this <div> if this conversation has unread messages *@
+                                        @if (!conversation.ConversationReadByMembers.Contains(user.Email))
+                                        {
+                                            <div class="absolute unread-dot bg-red-500 border border-white rounded-full h-2.5 w-2.5"></div>
+                                        }
+                                    </div>
+                                </li>
+                            </SfTooltip>
+                        }
+                    </ul>
+                </div>
+            </div>
+            <div class="row-span-2 col-span-1 md:col-span-2 h-full flex flex-col min-h-0 overflow-auto">
+                <div class="grow overflow-auto">
+                    @if (loading) {
+
+                    }
+                    else {
+                        <SfListView ID="list"
+                            DataSource="@messageGroups"
+                            ShowHeader="false"
+                            Height="100%"
+                            HeaderTitle="Chat"
+                            CssClass="message">
+                            <ListViewFieldSettings TValue="List<Message>" Id="Id" Text="Text"></ListViewFieldSettings>
+                            <ListViewTemplates TValue="List<Message>">
+                                <Template>
+                                    @{
+                                        List<Message> currentGroup = context as List<Message>;
+
+                                        <div class="flex @(currentGroup.Last().Chat == "sender" ? "sender-container" : "recipient-container")">
+                                            <div class="space-y-1" style="max-width: 70%;">
+                                                <div class="text-sm text-gray-500">@currentGroup.Last().UserName</div>
+                                                @foreach (var message in currentGroup)
+                                                {
+                                                    <div class="rounded-lg p-2 @(message.Chat == "sender" ? "sender-bubble" : "recipient-bubble")">
+                                                        @message.MessageText
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </Template>
+                            </ListViewTemplates>
+                        </SfListView>
+                    }
+                    
+                </div>
+                <div class="flex flex-col bg-white space-y-3 p-3 md:border-l md:border-gray-200 z-50">
+                    <div class="flex items-center justify-between">
+                        <SfTextBox Placeholder="Write a message..." CssClass="message-input" @bind-Value="TypedMessage" @onkeyup="KeyPressed"></SfTextBox>
+                        @if (IsConnected)
+                        {
+                            <div class="ml-2">
+                                <button class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm
+                                        font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none
+                                        focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 space-x-3" @onclick="TriggerSendMessage">
+                                    <div><i class="fa-solid fa-paper-plane"></i></div>
+                                    <div @onclick="TriggerSendMessage">@(SendingMessage?"Sending...":"Send")</div>
+                                </button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .message-input {
+        border: none !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .unread-dot {
+        position: absolute;
+        top: 50%;
+        right: .5rem;
+        transform: translate(-50%, -50%);
+    }
+
+    .message .e-list-item {
+        height: auto !important;
+    }
+</style>

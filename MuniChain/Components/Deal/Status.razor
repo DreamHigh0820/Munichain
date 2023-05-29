@@ -1,0 +1,122 @@
+@inject IDealService dealService
+
+
+@if (CanEdit)
+{
+    <div>
+        <label id="listbox-label" class="sr-only"> Change published status </label>
+        <div class="relative">
+            @{
+                var style = "relative inline-flex items-center bg-emerald-600 p-2 rounded-l-none rounded-r-md text-sm font-medium text-white hover:bg-emerald-700 focus:outline-none";
+                var dividerStyle = "divide-emerald-700";
+            }
+            <div class="inline-flex shadow-sm rounded-md divide-x @dividerStyle">
+                <div class="relative z-0 inline-flex shadow-sm rounded-md divide-x @dividerStyle">
+                    @if (dealInformation.Status == "Draft")
+                    {
+                        <div class="relative inline-flex items-center bg-emerald-600 py-2 pl-3 pr-4 border border-transparent rounded-l-md shadow-sm text-white space-x-2">
+                            <i class="fa-solid fa-lock"></i>
+                            <p class="text-base font-medium">Draft</p>
+                        </div>
+                    }
+                    else if (dealInformation.Status == "Published")
+                    {
+                        <div class="relative inline-flex items-center bg-emerald-600 py-2 pl-3 pr-4 border border-transparent rounded-l-md shadow-sm text-white space-x-2">
+                            <i class="fa-solid fa-earth-americas"></i>
+                            <p class="text-base font-medium">Published</p>
+                        </div>
+                    }
+                    else if (dealInformation.Status == "Pending")
+                    {
+                        <div class="relative inline-flex items-center bg-emerald-600 py-2 pl-3 pr-4 border border-transparent rounded-l-md shadow-sm text-white space-x-2">
+                            <i class="fa-solid fa-earth-americas"></i>
+                            <p class="text-base font-medium">Pending</p>
+                        </div>
+                    }
+
+                    <button @onclick="ToggleStatus" type="button" class="@style" aria-haspopup="listbox" aria-expanded="true" aria-labelledby="listbox-label">
+                        <span class="sr-only">Change published status</span>
+                        <i class="fa-solid fa-angle-down fa-fw"></i>
+                    </button>
+                </div>
+            </div>
+
+            @{
+                var statusVisibleClass = dealStatusDropdownVisible ? "block" : "hidden";
+            }
+            <div @onmouseenter="(() => dealStatusDropdownVisible = true)" @onmouseleave="(() => dealStatusDropdownVisible = false)">
+                <ul class="origin-top-right absolute z-10 right-0 mt-2 w-72 rounded-md shadow-lg overflow-hidden bg-white divide-y divide-gray-200 ring-1 ring-black ring-opacity-5 focus:outline-none @($"{statusVisibleClass}")" tabindex="-1" role="listbox" aria-labelledby="listbox-label" aria-activedescendant="listbox-option-0">
+                    <li @onclick="@(() => ChangeStatus("Draft"))" class="text-gray-800 hover:text-white hover:bg-emerald-600 cursor-pointer select-none relative p-4 text-sm transition-all" id="listbox-option-0" role="option">
+                        <div class="flex flex-col">
+                            <div class="flex justify-between">
+                                <p class="font-semibold">Draft</p>
+                                @if (dealInformation.Status == "Draft")
+                                {
+                                    <span><i class="fa-solid fa-check"></i></span>
+
+                                }
+                            </div>
+                            <p class="mt-2">A draft deal is not listed publicly on Munichain. The deal is only accessible to deal particpants.</p>
+                        </div>
+                    </li>
+                    <li @onclick="@(() => ChangeStatus("Pending"))" class="text-gray-800 hover:text-white hover:bg-emerald-600 cursor-pointer select-none relative p-4 text-sm transition-all" id="listbox-option-0" role="option">
+                        <div class="flex flex-col">
+                            <div class="flex justify-between">
+                                <p class="font-semibold">Pending</p>
+                                @if (dealInformation.Status == "Pending")
+                                {
+                                    <span><i class="fa-solid fa-check"></i></span>
+
+                                }
+                            </div>
+                            <p class="mt-2">Notify users that your deal is pending to be published.</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div>
+        <label id="listbox-label" class="sr-only"> Deal Status </label>
+        <div class="relative">
+            <div class="inline-flex shadow-sm rounded-md">
+                <div class="relative z-0 inline-flex shadow-sm rounded-md">
+                    @if (dealInformation.Status == "Draft")
+                    {
+                        <div class="relative inline-flex items-center bg-emerald-600 py-2 pl-3 pr-4 border border-transparent rounded-md shadow-sm text-white space-x-2">
+                            <i class="fa-solid fa-lock"></i>
+                            <p class="text-base font-medium">Draft</p>
+                        </div>
+                    }
+                    else if (dealInformation.Status == "Published")
+                    {
+                        <div class="relative inline-flex items-center bg-emerald-600 py-2 pl-3 pr-4 border border-transparent rounded-md shadow-sm text-white space-x-2">
+                            <i class="fa-solid fa-earth-americas"></i>
+                            <p class="text-base font-medium">Published</p>
+                        </div>
+                    }
+                    else if (dealInformation.Status == "Archived")
+                    {
+                        <div class="relative inline-flex items-center bg-emerald-600 py-2 pl-3 pr-4 border border-transparent rounded-md shadow-sm text-white space-x-2">
+                            <i class="fa-solid fa-box-archive"></i>
+                            <p class="text-base font-medium">Archived</p>
+                        </div>
+                    }
+                    else if (dealInformation.Status == "Pending")
+                    {
+                        <div class="relative inline-flex items-center bg-emerald-600 py-2 pl-3 pr-4 border border-transparent rounded-md shadow-sm text-white space-x-2">
+                            <i class="fa-solid fa-earth-americas"></i>
+                            <p class="text-base font-medium">Pending</p>
+                        </div>
+                    }
+                    <span class="relative inline-flex items-center bg-emerald-600 rounded-l-none rounded-r-md text-sm font-medium text-white" aria-haspopup="listbox" aria-expanded="true" aria-labelledby="listbox-label">
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+

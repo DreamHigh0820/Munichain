@@ -1,0 +1,63 @@
+﻿<div class="bg-white overflow-hidden shadow mb-8 sm:rounded-lg">
+    <div class="p-4 sm:p-6">
+        <div class="flex flex-col">
+            <GenericList List="UserList" PaginationDTO="SearchParams" RecordsPerPage="SearchParams.RecordsPerPage" CurrentPage="SearchParams.CurrentPage" CurrentPageDouble="CurrentPageDouble" TotalPages="TotalPages" TotalRecords="TotalRecords" PageChange="OnPageChange" RecordsPerPageChange="OnRecordsPerPageChange" SearchGeneric="OnSearchGeneric">
+                <WholeListTemplate>
+                    <div class="overflow-x-auto border border-gray-300 rounded-md">
+                        <div class="inline-block min-w-full align-middle">
+                            <div class="overflow-hidden">
+                                <table id="@Guid.NewGuid().ToString()" data-order="[]" class="min-w-full divide-y divide-gray-300" cellspacing="0">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Name</th>
+                                            <th scope="col" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Email</th>
+                                            <th scope="col" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Role</th>
+                                            @if (IsAdmin)
+                                            {
+                                                <th scope="col" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Actions</th>
+                                            }
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200 bg-white">
+                                        @foreach (var context in UserList)
+                                        {
+                                            <tr class="relative hover:bg-gray-50">
+                                                <td class="whitespace-nowrap px-3 py-3 text-sm font-medium text-gray-500">
+                                                    @if (context.Id != null)
+                                                    {
+                                                        <a href=@($"/advisor/{context.Id}") class="text-emerald-600 hover:text-emerald-800">@context.DisplayName</a>
+                                                    }
+                                                </td>
+                                                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@context.Email</td>
+                                                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@context.JobTitle</td>
+                                                @if (IsAdmin)
+                                                {
+                                                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 space-x-2">
+                                                        <button @onclick="@(() => OnRemoveFirmMember(context))" class="text-red-500 hover:text-red-700">Delete</button>
+                                                    </td>
+                                                }
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </WholeListTemplate>
+                <EmptyTemplate>
+                    <div class="p-4 sm:p-0">
+                        <div class="border-4 border-dashed border-gray-200 rounded-lg p-6">
+                            <div class="flex flex-col justify-center text-center">
+                                <div class="sm:w-1/2 mx-auto flex justify-center">
+                                    <NoData />
+                                </div>
+                                <div class="text-2xl font-bold text-gray-500 mt-6 mb-3">No Firm Members</div>
+                                <div class="text-base text-gray-500">Members associated with your firm will appear here.<br />Is something missing? <a href="mailto:support@munichain.com" class="text-emerald-600 underline">Let us know</a>.</div>
+                            </div>
+                        </div>
+                    </div>
+                </EmptyTemplate>
+            </GenericList>
+        </div>
+    </div>
+</div>

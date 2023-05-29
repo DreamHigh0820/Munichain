@@ -1,0 +1,56 @@
+@using Shared.Models.Enums;
+@using Domain.Services.Database;
+@using Domain.Services.ThirdParty;
+@inject IFirmsService firms
+
+@if (firmInformation == null) {
+
+}
+else {
+    <div class="mt-4 sm:mt-6 space-y-8">
+        <div class="bg-white shadow sm:rounded-lg sm:overflow-hidden">
+            <div class="divide-y divide-gray-200">
+                <div class="px-4 py-5 sm:px-6">
+                    <h2 id="firm-information" class="text-lg font-medium text-gray-900">Edit Firm Information</h2>
+                </div>
+                <div class="px-4 py-6 sm:px-6">
+                    <div class="grid grid-cols-12 gap-6">
+                        <div class="col-span-12">
+                            <label for="about" class="block text-sm font-medium text-gray-700 mb-1">About</label>
+                            <div class="border border-gray-300 bg-white rounded-lg shadow-sm overflow-hidden focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500">
+                                <textarea @bind="firmInformation.Bio" rows="3" name="bio" id="about" class="block w-full py-3 border-0 resize-none focus:ring-0 sm:text-sm" placeholder="Enter a short description about the firm..."></textarea>
+                            </div>
+                        </div>
+                        <div class="col-span-4">
+                            <label for="about" class="block text-sm font-medium text-gray-700 mb-1">City</label>
+                            <InputText type="text" @bind-Value="firmInformation.City" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></InputText>
+                        </div>
+                        <div class="col-span-4">
+                            <label for="about" class="block text-sm font-medium text-gray-700 mb-1">State</label>
+                            <SfDropDownList FilterBarPlaceholder="State" TValue="States?" TItem="string" DataSource="@EnumValues" @bind-Value="firmInformation.State"></SfDropDownList>
+                        </div>
+                        <div class="col-span-4">
+                            <label for="about" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                            <InputText type="text" @bind-Value="firmInformation.PhoneNumber" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"></InputText>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="px-4 py-3 bg-gray-50 text-right sm:px-6">
+                <button @onclick="UpdateFirmBio" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">Save</button>
+            </div>
+        </div>
+    </div>
+
+}
+
+@code {
+    public string[] EnumValues = Enum.GetNames(typeof(States));
+    [Parameter]
+    public Shared.Models.AppComponents.Firm firmInformation { get; set; }
+
+    private async Task UpdateFirmBio() {
+        await firms.Update(firmInformation);
+        toastService.ShowSuccess("Updated Successfully");
+    }
+}

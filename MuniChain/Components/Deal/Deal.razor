@@ -1,0 +1,312 @@
+@page "/deal/{dealId}"
+@page "/deal/{dealId}/{Select}"
+
+@inject AuthenticationStateProvider authenticationStateProvider
+@inject IDealViewUIProvider uiProvider
+@inject IDealService dealService
+@inject IDealParticipantService dealParticipants
+@inject IJSRuntime JS
+@inject ILogger<Deal> logger
+
+@if (loading)
+{
+    <UI.Components.Loading.DealLoading />
+}
+else
+{
+    <SfDialog Target="#target" Height="auto" Width="500" ShowCloseIcon="true" Header="Archive Deal" @bind-Visible="@ArchiveDealPopup" AllowPrerender="true" IsModal="true">
+        <DialogEvents OnOverlayModalClick="@(() => this.ArchiveDealPopup = false)"></DialogEvents>
+        <DialogTemplates>
+            <Content>
+                <div class="flex items-center justify-start space-x-3">
+                    <div class="text-red-500 text-lg">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                    </div>
+                    <div class="text-gray-500 text-sm">Are you sure you want to archive this deal?</div>
+                </div>
+            </Content>
+            <FooterTemplate>
+                <button id="sendButton" @onclick="@ArchiveDeal" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-500 hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">Archive</button>
+            </FooterTemplate>
+        </DialogTemplates>
+    </SfDialog>
+
+    <SfDialog Target="#target" Height="auto" Width="500" ShowCloseIcon="true" Header="Export Deal" @bind-Visible="@ExportDeal" AllowPrerender="true" IsModal="true">
+        <DialogEvents OnOverlayModalClick="@(() => this.ExportDeal = false)"></DialogEvents>
+        <DialogTemplates>
+            <Content>
+                <div class="flex flex-col space-y-3">
+                    <SfCheckBox @bind-Checked="exportSettings.Deal" Name="Export" Label="Deal Overview"></SfCheckBox>
+                    <SfCheckBox @bind-Checked="exportSettings.Series" Name="Export" Label="Deal Overview + Series"></SfCheckBox>
+                    <SfCheckBox @bind-Checked="exportSettings.Scale" Name="Export" Label="Deal Overview + Series + Maturities"></SfCheckBox>
+                    @if (view.CurrentUserPermissions.CanReadExpenditures())
+                    {
+                        <SfCheckBox @bind-Checked="exportSettings.Expenditures" Name="Export" Label="Expenditures"></SfCheckBox>
+                    }
+                    @if (view.CurrentUserPermissions.CanReadPerformance())
+                    {
+                        <SfCheckBox @bind-Checked="exportSettings.Performance" Name="Export" Label="Performance"></SfCheckBox>
+                    }
+                </div>
+            </Content>
+            <FooterTemplate>
+                <button id="sendButton" @onclick="@(() => ExportPdfAsync(exportSettings))" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600">Download PDF</button>
+            </FooterTemplate>
+        </DialogTemplates>
+    </SfDialog>
+    <div class="mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <nav class="flex" aria-label="Breadcrumb">
+            <ol role="list" class="flex items-center space-x-4">
+                <li>
+                    <div>
+                        <a href="/" class="text-gray-400 hover:text-gray-500">
+                            <svg class="flex-shrink-0 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                            </svg>
+                            <span class="sr-only">Home</span>
+                        </a>
+                    </div>
+                </li>
+                <li>
+                    <div class="flex items-center">
+                        <svg class="flex-shrink-0 h-5 w-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                            <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
+                        </svg>
+                        <a href=@($"/{Referral}") class="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700">Deals</a>
+                    </div>
+                </li>
+                @if (!string.IsNullOrEmpty(dealInformation?.Issuer))
+                {
+                    <li>
+                        <div class="flex items-center">
+                            <svg class="flex-shrink-0 h-5 w-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                                <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
+                            </svg>
+                            <a href=@($"/deal/{dealId}") class="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700">@dealInformation?.Issuer</a>
+                        </div>
+                    </li>
+                }
+            </ol>
+        </nav>
+    </div>
+
+    <div class="py-10">
+        <header>
+            <div class="mx-auto px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold leading-tight text-gray-900 mb-2">@dealInformation?.FormattedCurrencySize @dealInformation?.Issuer</h1>
+                        <div class="whitespace-pre-line first-line:text-lg text-sm font-semibold leading-tight text-gray-600">@dealInformation?.Description</div>
+                        @if (uiProvider.ShowElement(view, "LinkedInShare"))
+                        {
+                            string currentUrl = navigationManager.Uri;
+                            <ShareButton AddPlatformScript=true UrlToShare=@currentUrl></ShareButton>
+                        }
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+
+                        @if (uiProvider.ShowElement(view, "LockedWarning"))
+                        {
+                            <div class="inline-flex items-center px-4 py-2 border border-gray-300 text-base font-medium rounded-md text-white text-gray-700 space-x-2 cursor-default whitespace-nowrap">
+                                <i class="fa-solid fa-lock fa-fw"></i><span>Locked</span>
+                            </div>
+                        }
+
+                        @if (uiProvider.ShowElement(view, "PrivateView"))
+                        {
+                            var url = dealInformation.IsMasterCopy ? dealInformation.Id : dealInformation.HistoryDealID;
+                            <button @onclick="@(() => LoadComponent(url, false))" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-base font-medium rounded-md text-white bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 space-x-3 whitespace-nowrap">Private View</button>
+                        }
+                        @if (uiProvider.ShowElement(view, "PublicView"))
+                        {
+                            <button @onclick="@(() => LoadComponent(@dealInformation?.Id, true))" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-base font-medium rounded-md text-white bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 space-x-3 whitespace-nowrap">Public View</button>
+                        }
+
+                        @* Actions Dropdown *@
+                        <div class="relative">
+                            <div class="relative z-0 inline-flex shadow-sm rounded-md">
+                                <button @onclick="ToggleActions" type="button" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-base font-medium rounded-md text-white bg-white text-gray-700 hover:bg-gray-50 focus:outline-none space-x-2 whitespace-nowrap" aria-haspopup="listbox" aria-expanded="true" aria-labelledby="listbox-label">
+                                    <span>Actions</span>
+                                    <i class="fa-solid fa-angle-down fa-fw"></i>
+                                </button>
+                            </div>
+                            @{
+                                var actionsVisibleClass = actionsDropdownVisible ? "block" : "hidden";
+                                var actionsMenuStyle = "origin-top-right absolute z-10 right-0 mt-2 w-72 rounded-md shadow-lg overflow-hidden bg-white p-4 ring-1 ring-black ring-opacity-5 focus:outline-none";
+                                var actionsMenuItemStyle = "w-full text-left text-gray-600 hover:text-gray-800 hover:bg-gray-100 cursor-pointer select-none relative px-3 py-3 text-sm transition-all rounded space-x-2";
+                            }
+                            <div @onmouseenter="(() => actionsDropdownVisible = true)" @onmouseleave="(() => actionsDropdownVisible = false)">
+                                <div class="@actionsMenuStyle @($"{actionsVisibleClass}")">
+                                    @if (uiProvider.ShowElement(view, "LockButton"))
+                                    {
+                                        <button class="@actionsMenuItemStyle" type="button" @onclick="(() => LockDeal(true))">
+                                            <i class="fa-solid fa-lock fa-fw"></i><span>Lock</span>
+                                        </button>
+                                    }
+                                    @if (uiProvider.ShowElement(view, "UnlockButton"))
+                                    {
+                                        <button class="@actionsMenuItemStyle" type="button" @onclick="(() => LockDeal(false))">
+                                            <i class="fa-solid fa-lock-open fa-fw"></i><span>Unlock</span>
+                                        </button>
+                                    }
+                                    @if (uiProvider.ShowElement(view, "ArchiveButton"))
+                                    {
+                                        <button class="@actionsMenuItemStyle" type="button" @onclick="(() => ArchiveDealPopup = true)">
+                                            <i class="fa-solid fa-box-archive fa-fw"></i><span>Archive</span>
+                                        </button>
+                                    }
+                                    @if (uiProvider.ShowElement(view, "UnarchiveButton")) {
+                                        <button class="@actionsMenuItemStyle" type="button" @onclick="(() => UnarchiveDeal())">
+                                            <i class="fa-solid fa-trash-can-arrow-up fa-fw"></i><span>Restore from Archive</span>
+                                        </button>
+                                    }
+                                    @if (uiProvider.ShowElement(view, "Export"))
+                                    {
+                                        <button class="@actionsMenuItemStyle" type="button" @onclick="@(() => this.ExportDeal = true)">
+                                            <i class="fa-solid fa-file-pdf fa-fw"></i><span>Export</span>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <Status dealInformation=dealInformation CanEdit=@(uiProvider.ShowElement(view, "CanEditStatus")) />
+
+                    </div>
+                </div>
+            </div>
+        </header>
+        <main>
+            <div class="mx-auto sm:px-6 lg:px-8">
+                <!-- Page Content -->
+                <SfTab @ref="Tabs" @bind-SelectedItem="SelectedIndex" LoadOn="ContentLoad.Dynamic">
+                    <TabEvents Created="SetTabsOnLoad"></TabEvents>
+                    <TabAnimationSettings>
+                        <TabAnimationNext Effect="AnimationEffect.None" Easing="0"></TabAnimationNext>
+                        <TabAnimationPrevious Duration=0 Effect="AnimationEffect.None"></TabAnimationPrevious>
+                    </TabAnimationSettings>
+                    <TabItems>
+                        @if (uiProvider.ShowElement(view, "Information"))
+                        {
+                            <TabItem >
+                                <ChildContent>
+                                    <TabHeader Text="Deal Information"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="mt-4 sm:mt-6 space-y-6">
+                                        <Information user=user DealView="view" ReloadDeal="((args) => LoadComponent(args.Item1, args.Item2))" />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                        }
+                        <TabItem>
+                            <ChildContent>
+                                <TabHeader Text="Participants"></TabHeader>
+                            </ChildContent>
+                            <ContentTemplate>
+                                <div class="mt-4 sm:mt-6">
+                                    <Participants dealInformation="dealInformation" IsPublicView=@(view.IsPublicView) />
+                                </div>
+                            </ContentTemplate>
+                        </TabItem>
+                        @if (uiProvider.ShowElement(view, "Message Board"))
+                        {
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Message Board"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="mt-4 sm:mt-6">
+                                        <MessageBoard dealInformation="dealInformation" participants="@view.UserParticipants" />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                        }
+                        @if (uiProvider.ShowElement(view, "Documents"))
+                        {
+                            <TabItem>
+                            <ChildContent>
+                                <TabHeader Text="Documents"></TabHeader>
+                            </ChildContent>
+                            <ContentTemplate>
+                                <div class="mt-4 sm:mt-6">
+                                    <Upload dealInformation="@dealInformation" IsPublicView=@(view.IsPublicView)/>
+                                </div>
+                            </ContentTemplate>
+                        </TabItem>
+                        }
+                        @if (uiProvider.ShowElement(view, "Signatures"))
+                        {
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Signatures"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="mt-4 sm:mt-6 space-y-6">
+                                        <Sign DealId=@dealInformation.Id />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                        }
+                        @if (uiProvider.ShowElement(view, "Expenditures"))
+                        {
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Expenditures"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="mt-4 sm:mt-6">
+                                        <DealExpenditureComponent dealInformation=dealInformation user=user CanCurrentUserWrite="view.CurrentUserPermissions.IsOnlyDealAdmin() || (!view.DealGranted.IsLocked == true && view.CurrentUserPermissions.CanWriteExpenditures())" UserPermissions="view.CurrentUserPermissions" />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                        }
+                        @if (uiProvider.ShowElement(view, "Performance"))
+                        {
+                            <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Performance"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="mt-4 sm:mt-6">
+                                        <PerformanceComponent dealInformation=dealInformation user="user" CanCurrentUserWrite="view.CurrentUserPermissions.IsOnlyDealAdmin() || (!view.DealGranted.IsLocked == true && view.CurrentUserPermissions.CanWritePerformance())" UserPermissions="view.CurrentUserPermissions" />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                        }
+                        @if (uiProvider.ShowElement(view, "Calendar"))
+                        {
+                                <TabItem>
+                                <ChildContent>
+                                    <TabHeader Text="Calendar"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="mt-4 sm:mt-6">
+                                        <Schedule dealInformation=dealInformation currentUserPermissions="view.CurrentUserPermissions" />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                            
+                        }
+                        @if (uiProvider.ShowElement(view, "Audit"))
+                        {
+                            var disabled = !view.DealGranted.HasBeenPublished;
+                            <TabItem Disabled=disabled>
+                                <ChildContent>
+                                    <TabHeader Text="Audit"></TabHeader>
+                                </ChildContent>
+                                <ContentTemplate>
+                                    <div class="mt-4 sm:mt-6">
+                                        <DealAuditList dealId=@dealInformation.Id user=user ReloadDeal="((args) => LoadComponent(args.Item1, args.Item2))" />
+                                    </div>
+                                </ContentTemplate>
+                            </TabItem>
+                        }
+                    </TabItems>
+                </SfTab>
+                <!-- /End Page Content -->
+            </div>
+        </main>
+    </div>
+}

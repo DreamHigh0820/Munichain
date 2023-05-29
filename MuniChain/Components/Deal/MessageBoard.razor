@@ -1,0 +1,73 @@
+﻿@inject AuthenticationStateProvider authenticationStateProvider
+@inject IMessageBoardService messageBoardService
+@inject IDealParticipantService dealParticipantService
+@inject IUserService userService
+@inject IAIService aiService
+@inject IJSRuntime JsRuntime
+
+<NavigationLock OnBeforeInternalNavigation="OnBeforeInternalNavigation" />
+
+@if (loading)
+{
+    <UI.Components.Loading.GenericLoading />
+}
+else
+{
+    <section aria-labelledby="message-board">
+        <div class="bg-white shadow sm:rounded-lg">
+            <div class="divide-y divide-gray-200">
+                <div class="px-4 py-5 sm:px-6">
+                    <h2 id="message-board" class="text-lg font-medium text-gray-900">Message Board</h2>
+                </div>
+                <div class="bg-gray-50 px-4 py-6 sm:px-6">
+                    <div class="flex items-start space-x-4">
+                        <div class="flex-shrink-0">
+                            <img class="inline-block h-10 w-10 rounded-full" src=@($"{user.BlobUrl}/{user.Id}") onerror="this.onerror=null; this.src='images/default.png'" alt="Display Name">
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="relative">
+                                <div>
+                                    <label for="comment" class="sr-only">Post to message board</label>
+                                    <SfRichTextEditor @ref="rtfEditor" EnableAutoUrl=true ShiftEnterKey="ShiftEnterKeyTag.P" EnterKey="EnterKeyTag.P" @bind-Value="@messageToPost" ShowCharCount="true">
+                                        <RichTextEditorToolbarSettings Items="@Tools">
+                                            <RichTextEditorCustomToolbarItems>
+                                                @*<RichTextEditorCustomToolbarItem Name="AI">
+                                                    <Template>
+                                                        <SfButton @onclick="GenerateAI">AI</SfButton>
+                                                    </Template>
+                                                </RichTextEditorCustomToolbarItem>*@
+                                            </RichTextEditorCustomToolbarItems>
+                                        </RichTextEditorToolbarSettings>
+                                    </SfRichTextEditor>
+                                    <button @onclick="@(() => PostMessage())" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-base font-medium rounded-md text-white bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 space-x-3 whitespace-nowrap">Send</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-4 py-0 sm:px-6">
+                    <ul role="list" class="space-y-6">
+                        <Virtualize Items="@_messages">
+                            <li class="pb-6 border-b last-of-type:border-0">
+                                <div class="flex space-x-4">
+                                    <div class="flex-shrink-0">
+                                        <img class="h-10 w-10 rounded-full" src=@($"{user.BlobUrl}/{context.GivenByUserId}") onerror="this.onerror=null; this.src='images/default.png'" alt="Display Name">
+                                    </div>
+                                    <div>
+                                        <div class="text-sm">
+                                            <div class="font-medium text-gray-900">@context.GivenByName</div>
+                                        </div>
+                                        @((MarkupString)context.Message)
+                                        <div class="mt-2 text-sm space-x-2">
+                                            <span class="text-gray-500 font-medium">@context.DateGivenUTC.ToUserTimeZone(user)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                        </Virtualize>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+}

@@ -1,0 +1,109 @@
+﻿<div class="bg-white overflow-hidden shadow mb-8 sm:rounded-lg">
+    <div class="p-4 sm:p-6">
+        <div class="flex flex-col">
+            <GenericList TableName="@TableName" List="UsersList" PaginationDTO="SearchParams" RecordsPerPage="SearchParams.RecordsPerPage" CurrentPage="SearchParams.CurrentPage" CurrentPageDouble="CurrentPageDouble" TotalPages="TotalPages" TotalRecords="TotalRecords" PageChange="OnPageChange" RecordsPerPageChange="OnRecordsPerPageChange" SearchGeneric="OnSearchGeneric" IsShowExport=ShowExport>
+                <WholeListTemplate>
+                    <div class="overflow-x-auto border border-gray-300 rounded-md">
+                        <div class="inline-block min-w-full align-middle">
+                            <div class="overflow-hidden">
+                                <table id="@Guid.NewGuid().ToString()" data-order="[]" class="min-w-full divide-y divide-gray-300" cellspacing="0">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap w-16"></th>
+                                            <th scope="col" @onclick="@(() => Sort("DisplayName"))" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Name <i class="@(SortIndicator("DisplayName"))"></i></th>
+                                            <th scope="col" @onclick="@(() => Sort("Email"))" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Email<i class="@(SortIndicator("Email"))"></i></th>
+                                            @if (ShowRole)
+                                            {
+                                                <th scope="col" @onclick="@(() => Sort("JobTitle"))" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Role <i class="@(SortIndicator("JobTitle"))"></i></th>
+                                            }
+                                            else
+                                            {
+                                                <th scope="col" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Firm Name</th>
+                                            }
+                                            @if (IsAdmin)
+                                            {
+                                                <th scope="col" @onclick="@(() => Sort("Confirmed"))" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Active <i class="@(SortIndicator("Confirmed"))"></i></th>
+                                                <th scope="col" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Actions</th>
+                                            }
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200 bg-white">
+                                        @foreach (var context in UsersList)
+                                        {
+                                            <tr class="relative hover:bg-gray-50">
+                                                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">
+                                                    <img id="currentPhoto" src="@context.ProfilePicUrl" onerror="this.onerror=null; this.src='images/default.png'" alt="Profile Picture" class="h-10 w-10 rounded-full ring-4 ring-white bg-white">
+                                                </td>
+                                                <td class="whitespace-nowrap px-3 py-3 text-sm font-medium text-gray-500">
+                                                    <a href=@($"/advisor/{context.Id}") class="text-emerald-600 hover:text-emerald-800">@context.DisplayName</a>
+                                                </td>
+                                                <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@context.Email</td>
+                                                @if (ShowRole)
+                                                {
+                                                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@context.JobTitle</td>
+                                                }
+                                                else
+                                                {
+                                                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@context?.AssociatedFirm?.Name</td>
+                                                }
+                                                @if (IsAdmin)
+                                                {
+                                                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500">@context.Confirmed</td>
+                                                    <td class="whitespace-nowrap px-3 py-3 text-sm text-gray-500 space-x-2">
+                                                        <button @onclick="@(() => OnUserEdit(context))" class="text-emerald-600 hover:text-emerald-800">Edit</button>
+                                                    </td>
+                                                }
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </WholeListTemplate>
+                <NullTemplate>
+                    <div class="overflow-x-auto border border-gray-300 rounded-md">
+                        <div class="inline-block min-w-full align-middle">
+                            <div class="overflow-hidden">
+                                <table id="@Guid.NewGuid().ToString()" data-order="[]" class="min-w-full divide-y divide-gray-300" cellspacing="0">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap w-16"></th>
+                                            <th scope="col" @onclick="@(() => Sort("DisplayName"))" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Name <i class="@(SortIndicator("DisplayName"))"></i></th>
+                                            <th scope="col" @onclick="@(() => Sort("Email"))" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Email<i class="@(SortIndicator("Email"))"></i></th>
+                                            <th scope="col" @onclick="@(() => Sort("JobTitle"))" class="py-3 px-3 text-left text-sm font-semibold text-gray-900 whitespace-nowrap">Role <i class="@(SortIndicator("JobTitle"))"></i></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-200 bg-white">
+                                        @for(int i = 0; i < 10; i++)
+                                        {
+                                            <tr>
+                                                <td class="pt-3 pb-1 px-3"><SfSkeleton CssClass="skeletonCircleMedium" Shape=SkeletonType.Circle Width="40px"></SfSkeleton></td>
+                                                <td class="pt-3 pb-1 px-3"><SfSkeleton CssClass="skeletonRectangleMedium" Shape=SkeletonType.Rectangle Width="50%" Height="20px"></SfSkeleton></td>
+                                                <td class="pt-3 pb-1 px-3"><SfSkeleton CssClass="skeletonRectangleMedium" Shape=SkeletonType.Rectangle Width="50%" Height="20px"></SfSkeleton></td>
+                                                <td class="pt-3 pb-1 px-3"><SfSkeleton CssClass="skeletonRectangleMedium" Shape=SkeletonType.Rectangle Width="50%" Height="20px"></SfSkeleton></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </NullTemplate>
+                <EmptyTemplate>
+                    <div class="p-4 sm:p-0">
+                        <div class="border-4 border-dashed border-gray-200 rounded-lg p-6">
+                            <div class="flex flex-col justify-center text-center">
+                                <div class="sm:w-1/2 mx-auto flex justify-center">
+                                    <NoData />
+                                </div>
+                                <div class="text-2xl font-bold text-gray-500 mt-6 mb-3">No Users</div>
+                                <div class="text-base text-gray-500">Users will appear here.<br />Is something missing? <a href="mailto:support@munichain.com" class="text-emerald-600 underline">Let us know</a>.</div>
+                            </div>
+                        </div>
+                    </div>
+                </EmptyTemplate>
+            </GenericList>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,113 @@
+﻿@inject AuthenticationStateProvider authenticationStateProvider
+@inject IBoldsignService boldsignService
+@inject IUserService userService
+@inject IDealParticipantService dealParticipantService
+
+@if (loading)
+{
+    <UI.Components.Loading.GenericLoading />
+}
+else
+{
+    @if (AccountStatus == "Verified")
+    {
+        <div hidden="@(boldSignDocumentCreateUrl != null)" class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div class="p-4 sm:p-6 space-y-6">
+                <div class="pb-4 border-b">
+                    <div class="text-lg leading-6 font-medium text-gray-900">Start a New Document for Signature</div>
+                </div>
+                @* Add Boldsign Recipients *@
+                <div class="col-span-12 space-y-4 pb-6 border-b">
+                    <div class="text-base font-medium text-gray-700">Add Document Recipients</div>
+                    @if (MunichainRecipients.Any())
+                    {
+                        @foreach (var recipient in MunichainRecipients)
+                        {
+                            <div class="flex items-center space-x-3">
+                                <div class="grid grid-cols-12 gap-6 bg-gray-50 p-4 rounded-md flex-1">
+                                    <div class="col-span-12 sm:col-span-4">
+                                        <label for="recipient-email" class="block text-sm font-medium text-gray-700 mb-1">Recipient Email</label>
+                                        <SfDropDownList @bind-Value="recipient.Email" DataSource="dealParticipants" TValue="string" TItem="DealParticipant" Placeholder="Select a participant">
+                                            <DropDownListTemplates TItem="DealParticipant">
+                                                <ItemTemplate>
+                                                    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                                                        <div>
+                                                            <span>@((context as DealParticipant).EmailAddress)</span>
+                                                        </div>
+                                                        <div><span>@((context as DealParticipant).Role)</span></div>
+                                                    </div>
+                                                </ItemTemplate>
+                                            </DropDownListTemplates>
+                                            <DropDownListEvents TItem=DealParticipant TValue=string ValueChange="FillInFullName"></DropDownListEvents>
+                                            <DropDownListFieldSettings Value="EmailAddress"></DropDownListFieldSettings>
+                                        </SfDropDownList>
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-4">
+                                        <label for="recipient-name" class="block text-sm font-medium text-gray-700">Recipient Name</label>
+                                        <input @bind="recipient.Name" type="text" placeholder="Full Name" name="recipient-name" id="recipient-name" class="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md" />
+                                    </div>
+                                    <div class="col-span-12 sm:col-span-4">
+                                        <label for="recipient-type" class="block text-sm font-medium text-gray-700">Recipient Type</label>
+                                        <InputSelect @bind-Value="recipient.SignerType" id="recipient-type" name="recipient-type" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm">
+                                            <option selected>Signer</option>
+                                            <option>Reviewer</option>
+                                        </InputSelect>
+                                    </div>
+                                </div>
+                                @* Delete Recipient *@
+                                <button @onclick="() => deleteRecipient(recipient)" type="button" class="inline-flex items-center px-2.5 py-2 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"><i class="fa-regular fa-trash-can"></i></button>
+                            </div>
+                        }
+                    }
+                    @* Add Recipient *@
+                    <button @onclick="addRecipient" type="button" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500">Add Recipient</button>
+                </div>
+                @* Upload Document to Boldsign *@
+                @if (MunichainRecipients.Where(x => !string.IsNullOrEmpty(x.Email)).Any())
+                {
+                    <div class="space-y-4">
+                        <div class="text-base font-medium text-gray-700">Upload Document</div>
+                        <InputFile OnChange="(e => browserFile = e.File)" accept=".pdf" class="file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"></InputFile>
+                        @if (browserFile != null)
+                        {
+                            <button @onclick="UploadFile" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-600 ml-4">Upload</button>
+                        }
+                    </div>
+                }
+                
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(boldSignDocumentCreateUrl))
+        {
+            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div class="p-4 sm:p-6 space-y-6">
+                    <div class="flex justify-end items-center space-x-3">
+                        <div class="text-lg leading-6 font-medium text-gray-900 mr-auto">Add Signature Fields to Document</div>
+                        <button class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" onclick="@onReloadClick">Reload</button>
+                        <button class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" onclick="@onSendClick">Send</button>
+                    </div>
+                    <iframe id="prepare_page"
+                src="@boldSignDocumentCreateUrl"
+                height="600"
+                width="100%"
+                class="frame border rounded-md">
+                    </iframe>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        if (AccountStatus == "Pending")
+        {
+            <span>Please check your email for an invite from the <b>Boldsign</b> E-Signature platform.</span>
+        }
+        else if (AccountStatus == "Unregistered")
+        {
+            <div class="rounded-lg bg-white overflow-hidden shadow p-6">
+                <button class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500" @onclick="@OnSignUp">Register for Boldsign</button>
+            </div>
+        }
+    }
+}

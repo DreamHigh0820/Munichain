@@ -1,0 +1,19 @@
+﻿@page "/advisors"
+@inject IUserService userService
+
+<ConfirmedAuthorizeView>
+<div class="py-10">
+    <header>
+        <div class="mx-auto px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8">
+            <h1 class="text-3xl font-bold leading-tight text-gray-900">Advisors</h1>
+        </div>
+    </header>
+    <main>
+        <div class="mx-auto sm:px-6 lg:px-8">
+            <!-- Page Content -->
+            <UsersGrid filter="@(e => e.JobTitle == "Municipal Advisor")" ShowRole=false IsConfirmed=false ShowExport=false IsAdmin=false TableName="Municipal Advisor Individuals" />
+            <!-- /End Page Content -->
+        </div>
+    </main>
+</div>
+</ConfirmedAuthorizeView>
